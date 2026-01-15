@@ -10,14 +10,12 @@ interface GameBoardProps {
   onMove: (position: HexCoordinate) => void;
 }
 
-// Convert hex coordinates to pixel coordinates (pointy-top hexagons)
 function hexToPixel(q: number, r: number, size: number = 30) {
   const x = size * (Math.sqrt(3) * q + (Math.sqrt(3) / 2) * r);
   const y = size * ((3 / 2) * r);
   return { x, y };
 }
 
-// Get all hexes in a radius
 function getHexesInRadius(radius: number): HexCoordinate[] {
   const hexes: HexCoordinate[] = [];
   for (let q = -radius; q <= radius; q++) {
@@ -32,90 +30,112 @@ function getHexesInRadius(radius: number): HexCoordinate[] {
 
 export function GameBoard({ game, onMove }: GameBoardProps) {
   const { user } = useAuthStore();
-  const { selectedPosition, pendingMove, isMakingMove } = useGameStore();
+  const { 
+    selectedPosition, 
+    pendingMove, 
+    isMakingMove,
+    sacrificeSource,
+    sacrificePlacements 
+  } = useGameStore();
 
-  // Board radius should be 3 for 37 spaces
   const boardRadius = 3;
   const hexSize = 28;
   const holeRadius = hexSize * 0.45;
   const stoneRadius = hexSize * 0.38;
   const hexes = getHexesInRadius(boardRadius);
+  const VOID_KEY = '0,0';
 
-  // Determine player color with robust comparison
   const playerColor = React.useMemo(() => {
     if (!user?.user_id) return null;
-    
-    if (game.white_player?.user_id === user.user_id) {
-      return 'white';
-    }
-    
-    if (game.red_player?.user_id === user.user_id) {
-      return 'red';
-    }
-    
+    if (game.white_player?.user_id === user.user_id) return 'white';
+    if (game.red_player?.user_id === user.user_id) return 'red';
     return null;
   }, [user?.user_id, game.white_player?.user_id, game.red_player?.user_id]);
 
   const isPlayerTurn = Boolean(playerColor && game.current_turn === playerColor);
   const canInteract = game.status === 'active' && isPlayerTurn && !isMakingMove && !pendingMove;
+  const isSacrificePhase = game.phase === 'expansion';
 
+  // --- Data Preparation ---
 
-  // Create a map of positions to stones (guard against missing board_state)
+  // 1. Stones Map
   const stoneMap = new Map<string, 'white' | 'red'>();
-  const stones = game.board_state?.stones ?? [];
-  stones.forEach((stone) => {
-    const key = `${stone.position.q},${stone.position.r}`;
-    stoneMap.set(key, stone.player);
+  game.board_state?.stones?.forEach((stone) => {
+    stoneMap.set(`${stone.position.q},${stone.position.r}`, stone.player);
   });
 
-  // Define the Void Stone key for logic and rendering
-  const VOID_KEY = '0,0';
-
-  // Add pending move as optimistic update
-  if (pendingMove && pendingMove.position && playerColor) {
-    const pendingKey = `${pendingMove.position.q},${pendingMove.position.r}`;
-    // Prevent pending move on the Void Stone
-    if (!stoneMap.has(pendingKey) && pendingKey !== VOID_KEY) {
-      stoneMap.set(pendingKey, playerColor);
+  // 2. Pending Move Optimistic UI
+  if (pendingMove && playerColor) {
+    if (pendingMove.type === 'placement' && pendingMove.position) {
+      stoneMap.set(`${pendingMove.position.q},${pendingMove.position.r}`, playerColor);
+    } else if (pendingMove.type === 'sacrifice' && pendingMove.sacrifice_position && pendingMove.placements) {
+      // Remove source
+      stoneMap.delete(`${pendingMove.sacrifice_position.q},${pendingMove.sacrifice_position.r}`);
+      // Add placements
+      pendingMove.placements.forEach(p => {
+        stoneMap.set(`${p.q},${p.r}`, playerColor);
+      });
     }
   }
 
-  // Create a set of legal move positions (guard against missing legal_moves)
-  const legalMovePositions = new Set<string>();
-  const legalMoves = game.legal_moves ?? [];
-  legalMoves.forEach((move) => {
+  // 3. Legal Moves Analysis
+  const validPlacements = new Set<string>();
+  const validSacrificeSources = new Set<string>();
+
+  (game.legal_moves ?? []).forEach((move) => {
     if (move.type === 'placement' && move.position) {
-      const key = `${move.position.q},${move.position.r}`;
-      // Prevent legal move on the Void Stone
-      if (key !== VOID_KEY) {
-        legalMovePositions.add(key);
-      }
+       if (`${move.position.q},${move.position.r}` !== VOID_KEY) {
+         validPlacements.add(`${move.position.q},${move.position.r}`);
+       }
+    } else if (move.type === 'sacrifice' && move.sacrifice_position) {
+       validSacrificeSources.add(`${move.sacrifice_position.q},${move.sacrifice_position.r}`);
+       
+       // If a source is selected, valid placements are restricted to that source's pairs
+       if (sacrificeSource && 
+           move.sacrifice_position.q === sacrificeSource.q && 
+           move.sacrifice_position.r === sacrificeSource.r && 
+           move.placements) {
+         move.placements.forEach(p => {
+           validPlacements.add(`${p.q},${p.r}`);
+         });
+       }
     }
   });
 
-  // Calculate board dimensions
+  // --- Dimensions ---
   const allPositions = hexes.map((h) => hexToPixel(h.q, h.r, hexSize));
   const minX = Math.min(...allPositions.map((p) => p.x));
   const maxX = Math.max(...allPositions.map((p) => p.x));
   const minY = Math.min(...allPositions.map((p) => p.y));
   const maxY = Math.max(...allPositions.map((p) => p.y));
-
   const padding = hexSize * 1.5;
   const width = maxX - minX + padding * 2;
   const height = maxY - minY + padding * 2;
   const offsetX = -minX + padding;
   const offsetY = -minY + padding;
 
+  // --- Handlers ---
   const handleHexClick = (hex: HexCoordinate) => {
-    if (!canInteract) {
-      return;
-    }
+    if (!canInteract) return;
     const key = `${hex.q},${hex.r}`;
-    if (!legalMovePositions.has(key)) {
+
+    // Placement Phase Logic
+    if (!isSacrificePhase) {
+      if (validPlacements.has(key)) onMove(hex);
       return;
     }
-    
-    onMove(hex);
+
+    // Sacrifice Phase Logic
+    // 1. Selecting own stone (Source)
+    if (validSacrificeSources.has(key)) {
+      onMove(hex);
+      return;
+    }
+    // 2. Selecting empty spot (Placement) - requires source to be selected
+    if (sacrificeSource && !stoneMap.has(key) && key !== VOID_KEY) {
+       // Ideally verify strictly against validPlacements, but soft check helps UX flow
+       onMove(hex); 
+    }
   };
 
   return (
@@ -126,30 +146,23 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
         className="drop-shadow-2xl"
         preserveAspectRatio="xMidYMid meet"
       >
-        {/* Background */}
         <rect x="0" y="0" width={width} height={height} fill="rgba(0,0,0,0.4)" rx="16" />
 
-        {/* Hex grid outlines */}
+        {/* Grid Lines */}
         <g opacity="0.25" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" fill="none">
           {hexes.map((hex) => {
             const { x, y } = hexToPixel(hex.q, hex.r, hexSize);
             const cx = x + offsetX;
             const cy = y + offsetY;
-            const key = `hex-outline-${hex.q},${hex.r}`;
-            
-            // Pointy-top hexagon
             const points = Array.from({ length: 6 }, (_, i) => {
               const angle = (Math.PI / 3) * i - Math.PI / 2;
-              const px = cx + hexSize * 0.85 * Math.cos(angle);
-              const py = cy + hexSize * 0.85 * Math.sin(angle);
-              return `${px},${py}`;
+              return `${cx + hexSize * 0.85 * Math.cos(angle)},${cy + hexSize * 0.85 * Math.sin(angle)}`;
             }).join(' ');
-
-            return <polygon key={key} points={points} />;
+            return <polygon key={`hex-outline-${hex.q},${hex.r}`} points={points} />;
           })}
         </g>
 
-        {/* Holes - clickable areas */}
+        {/* Interactive Holes */}
         <g>
           {hexes.map((hex) => {
             const { x, y } = hexToPixel(hex.q, hex.r, hexSize);
@@ -157,78 +170,65 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
             const cy = y + offsetY;
             const key = `${hex.q},${hex.r}`;
             const isVoid = key === VOID_KEY;
-            const isLegalMove = legalMovePositions.has(key);
             const hasStone = stoneMap.has(key) && !isVoid;
-            const isSelected = selectedPosition?.q === hex.q && selectedPosition?.r === hex.r;
-            const isPending = pendingMove?.position?.q === hex.q && pendingMove?.position?.r === hex.r;
+
+            // --- State Flags ---
+            const isSource = sacrificeSource?.q === hex.q && sacrificeSource?.r === hex.r;
+            const isSacrificePlacement = sacrificePlacements.some(p => p.q === hex.q && p.r === hex.r);
+            const isLegalPlacement = validPlacements.has(key);
+            const isLegalSource = validSacrificeSources.has(key);
+            
+            // Interaction visual logic
+            let fillColor = "rgba(0,0,0,0.5)";
+            let strokeColor = "rgba(255,255,255,0.15)";
+            let cursor = "default";
+            
+            if (canInteract && !isVoid) {
+               if (isSacrificePhase) {
+                  if (isLegalSource) {
+                     // Highlight valid sources
+                     strokeColor = "#FF00FF"; // Magenta for source candidates
+                     cursor = "pointer";
+                  }
+                  if (sacrificeSource && !hasStone && !isVoid) {
+                     // Highlight empty spots once source is selected
+                     fillColor = "rgba(255,229,0,0.1)";
+                     strokeColor = isSacrificePlacement ? "#00FF00" : "#FFE500";
+                     cursor = "pointer";
+                  }
+               } else if (isLegalPlacement) {
+                  // Standard Placement
+                  fillColor = "rgba(255,229,0,0.2)";
+                  strokeColor = "#FFE500";
+                  cursor = "pointer";
+               }
+            }
+
+            if (isSource) {
+               strokeColor = "#00FFFF"; // Cyan for selected source
+               fillColor = "rgba(0,255,255,0.2)";
+            }
 
             return (
               <g key={`hole-${key}`}>
-                {/* Void Stone visual */}
                 {isVoid ? (
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={holeRadius}
-                    fill="#222"
-                    stroke="#7a00ff"
-                    strokeWidth="3.5"
-                    style={{ pointerEvents: 'none' }}
-                  />
+                  <circle cx={cx} cy={cy} r={holeRadius} fill="#222" stroke="#7a00ff" strokeWidth="3.5" />
                 ) : (
                   <circle
-                    cx={cx}
-                    cy={cy}
-                    r={holeRadius}
-                    fill={isLegalMove && canInteract && !hasStone ? "rgba(255,229,0,0.2)" : "rgba(0,0,0,0.5)"}
-                    stroke={isLegalMove && canInteract && !hasStone ? "#FFE500" : "rgba(255,255,255,0.15)"}
-                    strokeWidth={isLegalMove && canInteract && !hasStone ? "2.5" : "2"}
-                    style={{ cursor: isLegalMove && canInteract && !hasStone ? 'pointer' : 'default' }}
+                    cx={cx} cy={cy} r={holeRadius}
+                    fill={fillColor}
+                    stroke={strokeColor}
+                    strokeWidth={isSource || isSacrificePlacement ? 3 : 2}
+                    style={{ cursor }}
                     onClick={() => handleHexClick(hex)}
                   />
                 )}
 
-                {/* Legal move outer glow */}
-                {isLegalMove && canInteract && !hasStone && !isVoid && (
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={holeRadius + 4}
-                    fill="none"
-                    stroke="#FFE500"
-                    strokeWidth="2"
-                    opacity="0.5"
-                    style={{ pointerEvents: 'none' }}
-                  />
-                )}
-
-                {/* Selected highlight */}
-                {isSelected && !isVoid && (
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={holeRadius + 5}
-                    fill="none"
-                    stroke="#00F0FF"
-                    strokeWidth="3"
-                    opacity="0.9"
-                    style={{ pointerEvents: 'none' }}
-                  />
-                )}
-
-                {/* Pending move indicator */}
-                {isPending && !isVoid && (
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={holeRadius + 4}
-                    fill="none"
-                    stroke="#00F0FF"
-                    strokeWidth="2"
-                    opacity="0.6"
-                    className="animate-pulse"
-                    style={{ pointerEvents: 'none' }}
-                  />
+                {/* Sacrifice Placement Number Indicator */}
+                {isSacrificePlacement && (
+                   <text x={cx} y={cy} dy=".3em" textAnchor="middle" fill="#00FF00" fontSize="12" fontWeight="bold" pointerEvents="none">
+                      {sacrificePlacements.findIndex(p => p.q === hex.q && p.r === hex.r) + 1}
+                   </text>
                 )}
               </g>
             );
@@ -243,42 +243,32 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
             const cy = y + offsetY;
             const key = `${hex.q},${hex.r}`;
             const stone = stoneMap.get(key);
-            const isVoid = key === VOID_KEY;
-            const isPending = pendingMove?.position?.q === hex.q && pendingMove?.position?.r === hex.r;
+            
+            if (!stone || key === VOID_KEY) return null;
 
-            if (!stone || isVoid) return null;
+            // If this stone is the selected sacrifice source, fade it out
+            const isSource = sacrificeSource?.q === hex.q && sacrificeSource?.r === hex.r;
+            const opacity = isSource || pendingMove ? 0.6 : 1;
 
             const gradientId = `stone-gradient-${key}`;
 
             return (
-              <g key={`stone-${key}`} opacity={isPending ? 0.6 : 1} style={{ pointerEvents: 'none' }}>
-                {/* Stone gradient for 3D effect */}
+              <g key={`stone-${key}`} opacity={opacity} style={{ pointerEvents: 'none' }}>
                 <defs>
                   <radialGradient id={gradientId} cx="35%" cy="35%">
                     <stop offset="0%" stopColor={stone === 'white' ? '#FFFFFF' : '#FF4466'} />
                     <stop offset="100%" stopColor={stone === 'white' ? '#CCCCCC' : '#AA0022'} />
                   </radialGradient>
                 </defs>
-                {/* Stone shadow */}
+                <circle cx={cx + 2} cy={cy + 2} r={stoneRadius} fill="rgba(0,0,0,0.4)" />
                 <circle
-                  cx={cx + 2}
-                  cy={cy + 2}
-                  r={stoneRadius}
-                  fill="rgba(0,0,0,0.4)"
-                />
-                {/* Stone */}
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={stoneRadius}
+                  cx={cx} cy={cy} r={stoneRadius}
                   fill={`url(#${gradientId})`}
                   stroke={stone === 'white' ? 'rgba(200,200,200,0.8)' : 'rgba(180,0,30,0.8)'}
-                  strokeWidth="1"
+                  strokeWidth={isSource ? 3 : 1}
                 />
-                {/* Stone highlight */}
                 <circle
-                  cx={cx - stoneRadius * 0.3}
-                  cy={cy - stoneRadius * 0.3}
+                  cx={cx - stoneRadius * 0.3} cy={cy - stoneRadius * 0.3}
                   r={stoneRadius * 0.2}
                   fill={stone === 'white' ? 'rgba(255,255,255,0.8)' : 'rgba(255,150,150,0.5)'}
                 />
@@ -287,11 +277,8 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
           })}
         </g>
 
-        {/* Turn indicator overlay when not player's turn */}
         {game.status === 'active' && !isPlayerTurn && (
-          <g style={{ pointerEvents: 'none' }}>
-            <rect x="0" y="0" width={width} height={height} fill="rgba(0,0,0,0.15)" rx="16" />
-          </g>
+          <rect x="0" y="0" width={width} height={height} fill="rgba(0,0,0,0.15)" rx="16" pointerEvents="none" />
         )}
       </svg>
     </div>

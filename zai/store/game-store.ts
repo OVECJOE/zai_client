@@ -1,5 +1,3 @@
-// Game state store using Zustand
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { GameState, Move, HexCoordinate } from '@/types/api';
@@ -13,6 +11,10 @@ interface GameStore {
   isMakingMove: boolean;
   error: string | null;
 
+  // Sacrifice State
+  sacrificeSource: HexCoordinate | null;
+  sacrificePlacements: HexCoordinate[];
+
   // Actions
   setCurrentGame: (game: GameState | null) => void;
   updateGameState: (updates: Partial<GameState>) => void;
@@ -24,6 +26,11 @@ interface GameStore {
   setIsMakingMove: (isMakingMove: boolean) => void;
   setError: (error: string | null) => void;
   clearCurrentGame: () => void;
+  
+  // Sacrifice Actions
+  setSacrificeSource: (position: HexCoordinate | null) => void;
+  setSacrificePlacements: (placements: HexCoordinate[]) => void;
+  resetSacrificeState: () => void;
 }
 
 export const useGameStore = create<GameStore>()(
@@ -35,9 +42,11 @@ export const useGameStore = create<GameStore>()(
       pendingMove: null,
       isMakingMove: false,
       error: null,
+      sacrificeSource: null,
+      sacrificePlacements: [],
 
       setCurrentGame: (game) => {
-        set({ currentGame: game, error: null });
+        set({ currentGame: game, error: null, sacrificeSource: null, sacrificePlacements: [] });
         if (game) {
           db.put('games', {
             game_id: game.game_id,
@@ -100,12 +109,13 @@ export const useGameStore = create<GameStore>()(
         })),
 
       setSelectedPosition: (position) => set({ selectedPosition: position }),
-
       setPendingMove: (move) => set({ pendingMove: move }),
-
       setIsMakingMove: (isMakingMove) => set({ isMakingMove }),
-
       setError: (error) => set({ error }),
+      
+      setSacrificeSource: (position) => set({ sacrificeSource: position }),
+      setSacrificePlacements: (placements) => set({ sacrificePlacements: placements }),
+      resetSacrificeState: () => set({ sacrificeSource: null, sacrificePlacements: [] }),
 
       clearCurrentGame: () =>
         set({
@@ -113,6 +123,8 @@ export const useGameStore = create<GameStore>()(
           selectedPosition: null,
           pendingMove: null,
           error: null,
+          sacrificeSource: null,
+          sacrificePlacements: [],
         }),
     }),
     {
