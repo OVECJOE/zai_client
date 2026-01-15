@@ -34,7 +34,8 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
   const { user } = useAuthStore();
   const { selectedPosition, pendingMove, isMakingMove } = useGameStore();
 
-  const boardRadius = 5;
+  // Board radius should be 3 for 37 spaces
+  const boardRadius = 3;
   const hexSize = 28;
   const holeRadius = hexSize * 0.45;
   const stoneRadius = hexSize * 0.38;
@@ -58,6 +59,7 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
   const isPlayerTurn = Boolean(playerColor && game.current_turn === playerColor);
   const canInteract = game.status === 'active' && isPlayerTurn && !isMakingMove && !pendingMove;
 
+
   // Create a map of positions to stones (guard against missing board_state)
   const stoneMap = new Map<string, 'white' | 'red'>();
   const stones = game.board_state?.stones ?? [];
@@ -66,10 +68,15 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
     stoneMap.set(key, stone.player);
   });
 
+  // Add the Void Stone at (0,0) as a permanent obstacle
+  const VOID_KEY = '0,0';
+  stoneMap.set(VOID_KEY, 'void');
+
   // Add pending move as optimistic update
   if (pendingMove && pendingMove.position && playerColor) {
     const pendingKey = `${pendingMove.position.q},${pendingMove.position.r}`;
-    if (!stoneMap.has(pendingKey)) {
+    // Prevent pending move on the Void Stone
+    if (!stoneMap.has(pendingKey) && pendingKey !== VOID_KEY) {
       stoneMap.set(pendingKey, playerColor);
     }
   }
@@ -79,7 +86,11 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
   const legalMoves = game.legal_moves ?? [];
   legalMoves.forEach((move) => {
     if (move.type === 'placement' && move.position) {
-      legalMovePositions.add(`${move.position.q},${move.position.r}`);
+      const key = `${move.position.q},${move.position.r}`;
+      // Prevent legal move on the Void Stone
+      if (key !== VOID_KEY) {
+        legalMovePositions.add(key);
+      }
     }
   });
 
@@ -146,27 +157,40 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
             const cx = x + offsetX;
             const cy = y + offsetY;
             const key = `${hex.q},${hex.r}`;
+            const isVoid = key === VOID_KEY;
             const isLegalMove = legalMovePositions.has(key);
-            const hasStone = stoneMap.has(key);
+            const hasStone = stoneMap.has(key) && !isVoid;
             const isSelected = selectedPosition?.q === hex.q && selectedPosition?.r === hex.r;
             const isPending = pendingMove?.position?.q === hex.q && pendingMove?.position?.r === hex.r;
 
             return (
               <g key={`hole-${key}`}>
-                {/* Hole background - always clickable for legal moves */}
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={holeRadius}
-                  fill={isLegalMove && canInteract && !hasStone ? "rgba(255,229,0,0.2)" : "rgba(0,0,0,0.5)"}
-                  stroke={isLegalMove && canInteract && !hasStone ? "#FFE500" : "rgba(255,255,255,0.15)"}
-                  strokeWidth={isLegalMove && canInteract && !hasStone ? "2.5" : "2"}
-                  style={{ cursor: isLegalMove && canInteract && !hasStone ? 'pointer' : 'default' }}
-                  onClick={() => handleHexClick(hex)}
-                />
+                {/* Void Stone visual */}
+                {isVoid ? (
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={holeRadius}
+                    fill="#222"
+                    stroke="#7a00ff"
+                    strokeWidth="3.5"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                ) : (
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={holeRadius}
+                    fill={isLegalMove && canInteract && !hasStone ? "rgba(255,229,0,0.2)" : "rgba(0,0,0,0.5)"}
+                    stroke={isLegalMove && canInteract && !hasStone ? "#FFE500" : "rgba(255,255,255,0.15)"}
+                    strokeWidth={isLegalMove && canInteract && !hasStone ? "2.5" : "2"}
+                    style={{ cursor: isLegalMove && canInteract && !hasStone ? 'pointer' : 'default' }}
+                    onClick={() => handleHexClick(hex)}
+                  />
+                )}
 
                 {/* Legal move outer glow */}
-                {isLegalMove && canInteract && !hasStone && (
+                {isLegalMove && canInteract && !hasStone && !isVoid && (
                   <circle
                     cx={cx}
                     cy={cy}
@@ -180,7 +204,7 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
                 )}
 
                 {/* Selected highlight */}
-                {isSelected && (
+                {isSelected && !isVoid && (
                   <circle
                     cx={cx}
                     cy={cy}
@@ -194,7 +218,7 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
                 )}
 
                 {/* Pending move indicator */}
-                {isPending && (
+                {isPending && !isVoid && (
                   <circle
                     cx={cx}
                     cy={cy}
@@ -220,9 +244,10 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
             const cy = y + offsetY;
             const key = `${hex.q},${hex.r}`;
             const stone = stoneMap.get(key);
+            const isVoid = key === VOID_KEY;
             const isPending = pendingMove?.position?.q === hex.q && pendingMove?.position?.r === hex.r;
 
-            if (!stone) return null;
+            if (!stone || isVoid) return null;
 
             const gradientId = `stone-gradient-${key}`;
 
@@ -235,7 +260,6 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
                     <stop offset="100%" stopColor={stone === 'white' ? '#CCCCCC' : '#AA0022'} />
                   </radialGradient>
                 </defs>
-                
                 {/* Stone shadow */}
                 <circle
                   cx={cx + 2}
@@ -243,7 +267,6 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
                   r={stoneRadius}
                   fill="rgba(0,0,0,0.4)"
                 />
-                
                 {/* Stone */}
                 <circle
                   cx={cx}
@@ -253,7 +276,6 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
                   stroke={stone === 'white' ? 'rgba(200,200,200,0.8)' : 'rgba(180,0,30,0.8)'}
                   strokeWidth="1"
                 />
-
                 {/* Stone highlight */}
                 <circle
                   cx={cx - stoneRadius * 0.3}

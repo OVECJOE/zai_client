@@ -44,7 +44,6 @@ export function useGame(gameId?: string) {
   const connectToGame = useCallback(
     async (id: string) => {
       try {
-        // Connect to WebSocket
         await wsManager.connect(id);
 
         // Set up message handler
