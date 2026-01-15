@@ -2,74 +2,10 @@
  * IndexedDB Manager for offline-first data storage
  */
 
+import type { DBSchema } from '@/types/indexeddb';
+
 const DB_NAME = 'zai-game-db';
 const DB_VERSION = 1;
-
-export interface DBSchema {
-  users: {
-    key: string;
-    value: {
-      user_id: string;
-      username: string;
-      elo_rating: number;
-      games_played: number;
-      is_guest: boolean;
-      created_at: number;
-      updated_at: number;
-    };
-  };
-  games: {
-    key: string;
-    value: {
-      game_id: string;
-      white_player: any;
-      red_player: any;
-      status: string;
-      board_state: any;
-      legal_moves: any[];
-      current_turn: string;
-      turn_number: number;
-      phase: string;
-      winner?: string;
-      win_condition?: string;
-      created_at: number;
-      updated_at: number;
-      is_synced: boolean;
-    };
-  };
-  moves: {
-    key: number;
-    value: {
-      id?: number;
-      game_id: string;
-      move_number: number;
-      player: string;
-      move_data: any;
-      timestamp: number;
-      is_synced: boolean;
-    };
-  };
-  sync_queue: {
-    key: number;
-    value: {
-      id?: number;
-      url: string;
-      method: string;
-      headers: Record<string, string>;
-      data: any;
-      timestamp: number;
-      retry_count: number;
-    };
-  };
-  settings: {
-    key: string;
-    value: {
-      key: string;
-      value: any;
-      updated_at: number;
-    };
-  };
-}
 
 class IndexedDBManager {
   private db: IDBDatabase | null = null;
@@ -242,10 +178,13 @@ class IndexedDBManager {
     return new Promise((resolve, reject) => {
       const tx = db.transaction('games', 'readonly');
       const store = tx.objectStore('games');
-      const index = store.index('is_synced');
-      const request = index.getAll(false);
+      const request = store.getAll();
 
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const allGames = request.result;
+        const unsyncedGames = allGames.filter(game => !game.is_synced);
+        resolve(unsyncedGames);
+      };
       request.onerror = () => reject(request.error);
     });
   }
@@ -255,10 +194,13 @@ class IndexedDBManager {
     return new Promise((resolve, reject) => {
       const tx = db.transaction('moves', 'readonly');
       const store = tx.objectStore('moves');
-      const index = store.index('is_synced');
-      const request = index.getAll(false);
+      const request = store.getAll();
 
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const allMoves = request.result;
+        const unsyncedMoves = allMoves.filter(move => !move.is_synced);
+        resolve(unsyncedMoves);
+      };
       request.onerror = () => reject(request.error);
     });
   }
@@ -267,7 +209,7 @@ class IndexedDBManager {
     url: string,
     method: string,
     headers: Record<string, string>,
-    data: any
+    data: Record<string, unknown>
   ): Promise<void> {
     await this.put('sync_queue', {
       url,
@@ -284,12 +226,12 @@ class IndexedDBManager {
   }
 
   // Settings helpers
-  async getSetting(key: string): Promise<any> {
+  async getSetting<T = string | number | boolean | object>(key: string): Promise<T | undefined> {
     const setting = await this.get('settings', key);
-    return setting?.value;
+    return setting?.value as T | undefined;
   }
 
-  async setSetting(key: string, value: any): Promise<void> {
+  async setSetting(key: string, value: string | number | boolean | object): Promise<void> {
     await this.put('settings', {
       key,
       value,

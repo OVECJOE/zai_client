@@ -51,7 +51,7 @@ export const useGameStore = create<GameStore>()(
             phase: game.phase,
             winner: game.winner,
             win_condition: game.win_condition,
-            created_at: game.created_at,
+            created_at: game.started_at,
             updated_at: Date.now(),
             is_synced: true,
           }).catch(console.error);
@@ -77,7 +77,7 @@ export const useGameStore = create<GameStore>()(
               phase: updatedGame.phase,
               winner: updatedGame.winner,
               win_condition: updatedGame.win_condition,
-              created_at: updatedGame.created_at,
+              created_at: updatedGame.started_at,
               updated_at: Date.now(),
               is_synced: true,
             }).catch(console.error);

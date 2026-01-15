@@ -2,6 +2,8 @@
  * Service Worker registration
  */
 
+import type { ExtendedServiceWorkerRegistration } from '@/types/pwa';
+
 export function registerServiceWorker() {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
     return;
@@ -55,6 +57,7 @@ export async function requestPersistentStorage(): Promise<boolean> {
 export async function registerBackgroundSync(tag: string): Promise<void> {
   if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
     const registration = await navigator.serviceWorker.ready;
-    await registration.sync.register(tag);
+    const syncRegistration = registration as ExtendedServiceWorkerRegistration;
+    await syncRegistration.sync.register(tag);
   }
 }

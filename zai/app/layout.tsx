@@ -21,12 +21,6 @@ export const metadata: Metadata = {
   title: "Zai - Strategic Board Game",
   description: "Play Zai, a strategic hexagonal board game. Challenge players worldwide or practice offline against AI.",
   manifest: "/manifest.json",
-  themeColor: "#FF0033",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -42,6 +36,13 @@ export const metadata: Metadata = {
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
   },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#FF0033",
 };
 
 export default function RootLayout({

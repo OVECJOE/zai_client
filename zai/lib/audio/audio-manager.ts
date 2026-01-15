@@ -2,15 +2,7 @@
  * Audio Manager for game sound effects and music
  */
 
-type SoundEffect = 
-  | 'stone_place'
-  | 'stone_capture'
-  | 'invalid_move'
-  | 'game_start'
-  | 'game_end'
-  | 'match_found'
-  | 'turn_change'
-  | 'timer_warning';
+import type { SoundEffect } from '@/types/audio';
 
 class AudioManager {
   private context: AudioContext | null = null;
@@ -26,7 +18,11 @@ class AudioManager {
 
     try {
       // Create AudioContext (requires user interaction)
-      this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextConstructor) {
+        throw new Error('AudioContext not supported');
+      }
+      this.context = new AudioContextConstructor();
       
       // Resume context if suspended (iOS requirement)
       if (this.context.state === 'suspended') {

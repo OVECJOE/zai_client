@@ -1,51 +1,8 @@
 /**
- * IndexedDB persistence middleware for Zustand stores
+ * IndexedDB persistence utilities for Zustand stores
  */
 
-import { StateCreator, StoreMutatorIdentifier } from 'zustand';
 import { db } from './indexeddb';
-
-type IndexedDBPersist = <
-  T,
-  Mps extends [StoreMutatorIdentifier, unknown][] = [],
-  Mcs extends [StoreMutatorIdentifier, unknown][] = []
->(
-  config: StateCreator<T, Mps, Mcs>,
-  options: {
-    name: string;
-    version?: number;
-  }
-) => StateCreator<T, Mps, Mcs>;
-
-export const indexedDBPersist: IndexedDBPersist = (config, options) => (set, get, api) => {
-  const { name } = options;
-
-  // Initialize IndexedDB
-  db.init().catch((error) => {
-    console.error('Failed to initialize IndexedDB:', error);
-  });
-
-  // Load initial state from IndexedDB
-  db.getSetting(name).then((savedState) => {
-    if (savedState) {
-      set(savedState);
-    }
-  }).catch((error) => {
-    console.error('Failed to load state from IndexedDB:', error);
-  });
-
-  // Wrap set to persist to IndexedDB
-  const persistedSet: typeof set = (partial, replace) => {
-    set(partial, replace);
-    
-    const state = get();
-    db.setSetting(name, state).catch((error) => {
-      console.error('Failed to persist state to IndexedDB:', error);
-    });
-  };
-
-  return config(persistedSet, get, api);
-};
 
 // Sync manager for offline operations
 export class SyncManager {
@@ -58,7 +15,7 @@ export class SyncManager {
     return SyncManager.instance;
   }
 
-  async queueOperation(url: string, method: string, data: any, headers: Record<string, string> = {}): Promise<void> {
+  async queueOperation(url: string, method: string, data: Record<string, unknown>, headers: Record<string, string> = {}): Promise<void> {
     await db.addToSyncQueue(url, method, headers, data);
     
     // Try to sync immediately if online
