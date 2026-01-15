@@ -68,9 +68,8 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
     stoneMap.set(key, stone.player);
   });
 
-  // Add the Void Stone at (0,0) as a permanent obstacle
+  // Define the Void Stone key for logic and rendering
   const VOID_KEY = '0,0';
-  stoneMap.set(VOID_KEY, 'void');
 
   // Add pending move as optimistic update
   if (pendingMove && pendingMove.position && playerColor) {
