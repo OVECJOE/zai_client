@@ -197,90 +197,97 @@ export default function Home() {
                 <div className="game-text text-white/50 text-xs">Hex grid • legal moves glow</div>
               </div>
               <div className="rounded-xl overflow-hidden border border-white/10 bg-black/20">
-                <svg viewBox="0 0 800 340" className="w-full h-auto">
-                  <rect x="0" y="0" width="800" height="340" fill="rgba(0,0,0,0.25)" />
+                <svg viewBox="0 0 340 340" className="w-full h-auto">
+                  <rect x="0" y="0" width="340" height="340" fill="rgba(0,0,0,0.25)" />
                   {(() => {
-                    const rows = 10;
-                    const cols = 16;
-                    const dx = 46;
-                    const dy = 30;
-                    const ox = 30;
-                    const oy = 40;
-                    const hexR = 14; // outline radius
-                    const holeR = 8.5; // hole radius
-                    const stoneR = 7.5; // stone radius (must be smaller than hole)
-
-                    const centers: Array<{ x: number; y: number; key: string }> = [];
-                    for (let row = 0; row < rows; row++) {
-                      for (let col = 0; col < cols; col++) {
-                        const x = ox + col * dx + (row % 2 ? dx / 2 : 0);
-                        const y = oy + row * dy;
-                        centers.push({ x, y, key: `${row}-${col}` });
+                    // Hex grid with radius 3 (37 spaces), center at (0,0)
+                    const radius = 3;
+                    const hexSize = 32;
+                    const centerX = 170;
+                    const centerY = 170;
+                    const hexes: { q: number; r: number }[] = [];
+                    for (let q = -radius; q <= radius; q++) {
+                      const r1 = Math.max(-radius, -q - radius);
+                      const r2 = Math.min(radius, -q + radius);
+                      for (let r = r1; r <= r2; r++) {
+                        hexes.push({ q, r });
                       }
                     }
-
-                    // Pick some known centers for stones so they're aligned to holes.
-                    const pick = (row: number, col: number) =>
-                      centers.find((c) => c.key === `${row}-${col}`) ?? centers[0];
-
-                    const s1 = pick(4, 7);
-                    const s2 = pick(5, 8);
-                    const s3 = pick(4, 9);
-                    const s4 = pick(5, 10);
-                    const s5 = pick(4, 11);
-                    const glow = pick(3, 9);
-
+                    function hexToPixel(q: number, r: number) {
+                      const x = hexSize * (Math.sqrt(3) * q + (Math.sqrt(3) / 2) * r);
+                      const y = hexSize * ((3 / 2) * r);
+                      return { x: centerX + x, y: centerY + y };
+                    }
+                    // Example stones and highlights
+                    const whiteStones = [
+                      { q: 0, r: -2 },
+                      { q: 1, r: -1 },
+                      { q: -1, r: 1 },
+                    ];
+                    const redStones = [
+                      { q: 0, r: 2 },
+                      { q: -2, r: 2 },
+                    ];
+                    const legalMove = { q: 1, r: 0 };
                     return (
                       <>
+                        {/* Hex outlines */}
                         <g opacity="0.4" stroke="rgba(255,255,255,0.30)" strokeWidth="2" fill="none">
-                          {centers.map((c) => (
-                            <polygon
-                              key={`hex-${c.key}`}
-                              points={[
-                                [c.x, c.y - hexR],
-                                [c.x + hexR * 0.86, c.y - hexR * 0.5],
-                                [c.x + hexR * 0.86, c.y + hexR * 0.5],
-                                [c.x, c.y + hexR],
-                                [c.x - hexR * 0.86, c.y + hexR * 0.5],
-                                [c.x - hexR * 0.86, c.y - hexR * 0.5],
-                              ]
-                                .map((p) => p.join(','))
-                                .join(' ')}
-                            />
-                          ))}
+                          {hexes.map(({ q, r }) => {
+                            const { x, y } = hexToPixel(q, r);
+                            const points = Array.from({ length: 6 }, (_, i) => {
+                              const angle = (Math.PI / 3) * i - Math.PI / 2;
+                              return [
+                                x + hexSize * 0.85 * Math.cos(angle),
+                                y + hexSize * 0.85 * Math.sin(angle),
+                              ];
+                            })
+                              .map((p) => p.join(','))
+                              .join(' ');
+                            return <polygon key={`hex-${q},${r}`} points={points} />;
+                          })}
                         </g>
-
-                        {/* holes */}
+                        {/* Holes */}
                         <g opacity="0.55">
-                          {centers.map((c) => (
-                            <circle
-                              key={`hole-${c.key}`}
-                              cx={c.x}
-                              cy={c.y}
-                              r={holeR}
-                              fill="rgba(0,0,0,0.35)"
-                              stroke="rgba(255,255,255,0.18)"
-                              strokeWidth="2"
-                            />
-                          ))}
+                          {hexes.map(({ q, r }) => {
+                            const { x, y } = hexToPixel(q, r);
+                            const isVoid = q === 0 && r === 0;
+                            return (
+                              <circle
+                                key={`hole-${q},${r}`}
+                                cx={x}
+                                cy={y}
+                                r={hexSize * 0.45}
+                                fill={isVoid ? '#222' : 'rgba(0,0,0,0.35)'}
+                                stroke={isVoid ? '#7a00ff' : 'rgba(255,255,255,0.18)'}
+                                strokeWidth={isVoid ? 3.5 : 2}
+                              />
+                            );
+                          })}
                         </g>
-
-                        {/* stones (aligned + smaller than holes) */}
-                        <circle cx={s1.x} cy={s1.y} r={stoneR} fill="#FFFFFF" />
-                        <circle cx={s2.x} cy={s2.y} r={stoneR} fill="#FF0033" />
-                        <circle cx={s3.x} cy={s3.y} r={stoneR} fill="#FFFFFF" />
-                        <circle cx={s4.x} cy={s4.y} r={stoneR} fill="#FF0033" />
-                        <circle cx={s5.x} cy={s5.y} r={stoneR} fill="#FFFFFF" />
-
-                        {/* legal move highlight (aligned to a hole) */}
-                        <circle
-                          cx={glow.x}
-                          cy={glow.y}
-                          r={holeR + 3.5}
-                          fill="rgba(255,229,0,0.18)"
-                          stroke="#FFE500"
-                          strokeWidth="3"
-                        />
+                        {/* Stones */}
+                        {whiteStones.map(({ q, r }, i) => {
+                          const { x, y } = hexToPixel(q, r);
+                          return <circle key={`wstone-${i}`} cx={x} cy={y} r={hexSize * 0.38} fill="#fff" stroke="#ccc" strokeWidth="1.5" />;
+                        })}
+                        {redStones.map(({ q, r }, i) => {
+                          const { x, y } = hexToPixel(q, r);
+                          return <circle key={`rstone-${i}`} cx={x} cy={y} r={hexSize * 0.38} fill="#FF0033" stroke="#AA0022" strokeWidth="1.5" />;
+                        })}
+                        {/* Legal move highlight */}
+                        {(() => {
+                          const { x, y } = hexToPixel(legalMove.q, legalMove.r);
+                          return (
+                            <circle
+                              cx={x}
+                              cy={y}
+                              r={hexSize * 0.45 + 6}
+                              fill="rgba(255,229,0,0.18)"
+                              stroke="#FFE500"
+                              strokeWidth="3"
+                            />
+                          );
+                        })()}
                       </>
                     );
                   })()}
