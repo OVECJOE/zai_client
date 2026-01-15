@@ -79,6 +79,7 @@ export function useGame(gameId?: string) {
                 current_turn: moveAccepted.payload.next_turn,
                 turn_number: moveAccepted.payload.move_number + 1,
                 status: moveAccepted.payload.game_status as GameState['status'],
+                // Phase might change here too, but state_update usually follows
               });
               setPendingMove(null);
               setIsMakingMove(false);
@@ -101,6 +102,7 @@ export function useGame(gameId?: string) {
                 turn_number: stateUpdate.payload.turn_number,
                 board_state: stateUpdate.payload.board_state,
                 legal_moves: stateUpdate.payload.legal_moves,
+                phase: stateUpdate.payload.phase as GameState['phase'], 
               });
               setPendingMove(null);
               setIsMakingMove(false);
@@ -202,22 +204,27 @@ export function useGame(gameId?: string) {
         return;
       }
 
-      // Phase 1: Placement
-      if (currentGameState.phase === 'placement') {
-        setSelectedPosition(position);
-        const legalMoves = currentGameState.legal_moves ?? [];
-        const isValid = legalMoves.some(
-          m => m.type === 'placement' && m.position?.q === position.q && m.position?.r === position.r
-        );
-        if (isValid) {
-          await makeMove({ type: 'placement', position });
-        } else {
-          addToast({ message: 'Invalid move position', type: 'warning' });
-        }
-        return;
+      // We check for placement first if no sacrifice sequence is active
+      const { sacrificeSource: currentSource } = useGameStore.getState();
+      
+      // If we are NOT in the middle of a sacrifice sequence (source selected)
+      // Check if this click is a valid simple placement
+      if (!currentSource) {
+         const legalMoves = currentGameState.legal_moves ?? [];
+         const isPlacement = legalMoves.some(
+           m => m.type === 'placement' && m.position?.q === position.q && m.position?.r === position.r
+         );
+         
+         // If it's a valid placement, do it immediately (unless it's also a sacrifice source?)
+         // In Zai, a stone is either own (sacrifice source) or empty (placement). They are mutually exclusive.
+         if (isPlacement) {
+            setSelectedPosition(position);
+            await makeMove({ type: 'placement', position });
+            return;
+         }
       }
 
-      // Phase 2: Expansion (Sacrifice)
+      // Phase 2: Sacrifice Logic
       if (currentGameState.phase === 'expansion') {
         const legalMoves = currentGameState.legal_moves ?? [];
         const { sacrificeSource: currentSource, sacrificePlacements: currentPlacements } = useGameStore.getState();
@@ -242,16 +249,13 @@ export function useGame(gameId?: string) {
           return;
         }
 
-        // 2. Select Placements (Empty Spots)
+        // 2. Select Placements (Empty Spots) for Sacrifice
         if (currentSource) {
-          // Check if spot is occupied
+          // Check if spot is occupied (and not by Void)
           const isOccupied = currentGameState.board_state.stones.some(
             s => s.position.q === position.q && s.position.r === position.r
           );
-          if (isOccupied && (position.q !== 0 || position.r !== 0)) {
-             // Allow clicking occupied spots if it's the Void, but logic handled by board
-             return; 
-          }
+          if (isOccupied) return;
 
           // Toggle placement
           const existsIdx = currentPlacements.findIndex(p => p.q === position.q && p.r === position.r);
@@ -286,10 +290,8 @@ export function useGame(gameId?: string) {
                    sacrifice_position: currentSource,
                    placements: newPlacements
                 });
-                // State reset handled in move_accepted/rejected listeners
              } else {
                 addToast({ message: 'Invalid sacrifice combination', type: 'warning' });
-                // Don't reset immediately, let user correct
              }
           }
         }
@@ -312,7 +314,6 @@ export function useGame(gameId?: string) {
     makeMove,
     resign,
     selectPosition,
-    // Expose sacrifice state for UI
     sacrificeSource,
     sacrificePlacements, 
   };

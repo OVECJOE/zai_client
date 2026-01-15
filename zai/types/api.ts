@@ -282,6 +282,7 @@ export interface WSStateUpdate extends WSMessage {
       player: 'white' | 'red';
       position: HexCoordinate;
     };
+    phase: 'placement' | 'expansion' | 'encirclement' | 'endgame';
   };
 }
 

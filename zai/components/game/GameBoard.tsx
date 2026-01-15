@@ -57,28 +57,22 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
   const isSacrificePhase = game.phase === 'expansion';
 
   // --- Data Preparation ---
-
-  // 1. Stones Map
   const stoneMap = new Map<string, 'white' | 'red'>();
   game.board_state?.stones?.forEach((stone) => {
     stoneMap.set(`${stone.position.q},${stone.position.r}`, stone.player);
   });
 
-  // 2. Pending Move Optimistic UI
   if (pendingMove && playerColor) {
     if (pendingMove.type === 'placement' && pendingMove.position) {
       stoneMap.set(`${pendingMove.position.q},${pendingMove.position.r}`, playerColor);
     } else if (pendingMove.type === 'sacrifice' && pendingMove.sacrifice_position && pendingMove.placements) {
-      // Remove source
       stoneMap.delete(`${pendingMove.sacrifice_position.q},${pendingMove.sacrifice_position.r}`);
-      // Add placements
       pendingMove.placements.forEach(p => {
         stoneMap.set(`${p.q},${p.r}`, playerColor);
       });
     }
   }
 
-  // 3. Legal Moves Analysis
   const validPlacements = new Set<string>();
   const validSacrificeSources = new Set<string>();
 
@@ -90,7 +84,6 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
     } else if (move.type === 'sacrifice' && move.sacrifice_position) {
        validSacrificeSources.add(`${move.sacrifice_position.q},${move.sacrifice_position.r}`);
        
-       // If a source is selected, valid placements are restricted to that source's pairs
        if (sacrificeSource && 
            move.sacrifice_position.q === sacrificeSource.q && 
            move.sacrifice_position.r === sacrificeSource.r && 
@@ -119,22 +112,24 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
     if (!canInteract) return;
     const key = `${hex.q},${hex.r}`;
 
-    // Placement Phase Logic
-    if (!isSacrificePhase) {
-      if (validPlacements.has(key)) onMove(hex);
-      return;
+    // FIX: Check for standard placement FIRST.
+    // If we are not actively building a sacrifice chain (no source selected),
+    // and the user clicks a valid placement spot, treat it as a placement.
+    if (!sacrificeSource && validPlacements.has(key)) {
+       onMove(hex);
+       return;
     }
 
-    // Sacrifice Phase Logic
-    // 1. Selecting own stone (Source)
-    if (validSacrificeSources.has(key)) {
-      onMove(hex);
-      return;
-    }
-    // 2. Selecting empty spot (Placement) - requires source to be selected
-    if (sacrificeSource && !stoneMap.has(key) && key !== VOID_KEY) {
-       // Ideally verify strictly against validPlacements, but soft check helps UX flow
-       onMove(hex); 
+    if (isSacrificePhase) {
+      // 1. Selecting own stone (Source)
+      if (validSacrificeSources.has(key)) {
+        onMove(hex);
+        return;
+      }
+      // 2. Selecting empty spot (Sacrifice Placement) - requires source to be selected
+      if (sacrificeSource && !stoneMap.has(key) && key !== VOID_KEY) {
+         onMove(hex); 
+      }
     }
   };
 
@@ -187,7 +182,7 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
                if (isSacrificePhase) {
                   if (isLegalSource) {
                      // Highlight valid sources
-                     strokeColor = "#FF00FF"; // Magenta for source candidates
+                     strokeColor = "#FF00FF"; 
                      cursor = "pointer";
                   }
                   if (sacrificeSource && !hasStone && !isVoid) {
@@ -195,9 +190,14 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
                      fillColor = "rgba(255,229,0,0.1)";
                      strokeColor = isSacrificePlacement ? "#00FF00" : "#FFE500";
                      cursor = "pointer";
+                  } else if (!sacrificeSource && isLegalPlacement) {
+                     // FIX: Ensure simple placements are highlighted even in Phase 2 if no source selected
+                     fillColor = "rgba(255,229,0,0.2)";
+                     strokeColor = "#FFE500";
+                     cursor = "pointer";
                   }
                } else if (isLegalPlacement) {
-                  // Standard Placement
+                  // Standard Placement (Phase 1)
                   fillColor = "rgba(255,229,0,0.2)";
                   strokeColor = "#FFE500";
                   cursor = "pointer";
@@ -205,7 +205,7 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
             }
 
             if (isSource) {
-               strokeColor = "#00FFFF"; // Cyan for selected source
+               strokeColor = "#00FFFF";
                fillColor = "rgba(0,255,255,0.2)";
             }
 
@@ -224,7 +224,6 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
                   />
                 )}
 
-                {/* Sacrifice Placement Number Indicator */}
                 {isSacrificePlacement && (
                    <text x={cx} y={cy} dy=".3em" textAnchor="middle" fill="#00FF00" fontSize="12" fontWeight="bold" pointerEvents="none">
                       {sacrificePlacements.findIndex(p => p.q === hex.q && p.r === hex.r) + 1}
@@ -246,7 +245,6 @@ export function GameBoard({ game, onMove }: GameBoardProps) {
             
             if (!stone || key === VOID_KEY) return null;
 
-            // If this stone is the selected sacrifice source, fade it out
             const isSource = sacrificeSource?.q === hex.q && sacrificeSource?.r === hex.r;
             const opacity = isSource || pendingMove ? 0.6 : 1;
 
