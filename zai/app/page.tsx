@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,7 +15,14 @@ import type { BotDifficulty } from '@/types/api';
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
-  const { guestLogin } = useAuth();
+  const { guestLogin, refreshProfile } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated && user?.user_id) {
+      refreshProfile();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.user_id]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>('medium');

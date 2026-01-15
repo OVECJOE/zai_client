@@ -1,5 +1,5 @@
-const CACHE_NAME = 'zai-game-v1';
-const RUNTIME_CACHE = 'zai-runtime-v1';
+const CACHE_NAME = 'zai-game-v2';
+const RUNTIME_CACHE = 'zai-runtime-v2';
 
 const PRECACHE_URLS = [
   '/',
