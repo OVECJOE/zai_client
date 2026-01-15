@@ -12,6 +12,11 @@ import { GameShell, GamePage } from '@/components/layout/GameShell';
 import { getErrorMessage } from '@/lib/utils/errors';
 import type { BotDifficulty } from '@/types/api';
 
+// Illustrations
+import { PlacementState } from '@/components/illustrations/PlacementState';
+import { ConnectivityState } from '@/components/illustrations/ConnectivityState';
+import { SacrificeState } from '@/components/illustrations/SacrificeState';
+
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
@@ -23,6 +28,7 @@ export default function Home() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user?.user_id]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>('medium');
@@ -65,10 +71,7 @@ export default function Home() {
       router.push(`/play/${botGame.game_id}`);
     } catch (err: unknown) {
       console.error('Bot game start failed:', err);
-      
-      // Handle stale token (401) by clearing auth and retrying as guest
       if (err instanceof ApiError && err.status === 401) {
-        // Clear stale auth state
         useAuthStore.getState().clearAuth();
         setError('Session expired. Please try again.');
       } else {
@@ -82,255 +85,193 @@ export default function Home() {
   return (
     <GameShell>
       <GamePage>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-          {/* Left: Hero copy */}
-          <div className="space-y-8">
-            <div className="space-y-5">
-              <h1 className="game-title text-5xl sm:text-6xl">Hex Network Strategy</h1>
-              <p className="game-text text-xl sm:text-2xl text-white/80 max-w-xl">
-                Strategic hex warfare on a living hex-grid. Build networks, deny space, and encircle to win.
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center min-h-[60vh]">
+          {/* Left: Hero Copy */}
+          <div className="space-y-10">
+            <div className="space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-white/70 uppercase tracking-widest">
+                <span className="w-2 h-2 rounded-full bg-[#00FF88] animate-pulse"></span>
+                v1.0 Live
+              </div>
+              <h1 className="game-title text-6xl sm:text-7xl lg:text-8xl leading-[0.9]">
+                Distract<br />
+                <span className="text-white">&</span> Capture
+              </h1>
+              <p className="game-text text-xl sm:text-2xl text-white/60 max-w-xl leading-relaxed">
+                A ruthless game of connection and sacrifice. Master the hex grid to encircle your opponent before they cut your line.
               </p>
             </div>
 
             {error && (
-              <div className="game-card p-4 bg-red-500/20 border-red-500/50 text-red-200">
+              <div className="game-card p-4 bg-red-500/10 border-red-500/40 text-red-200">
                 {error}
               </div>
             )}
 
-            {/* Primary CTA */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <GameButton
-                size="lg"
-                variant="primary"
-                onClick={handleQuickPlay}
-                disabled={isLoading}
-                className="min-w-[240px]"
-              >
-                {isLoading ? 'Starting...' : isAuthenticated ? 'Play Now' : 'Play as Guest'}
-              </GameButton>
-              {!isAuthenticated && (
-                <Link href="/register">
-                  <GameButton size="lg" variant="outline" className="min-w-[240px]">
-                    Create Account
-                  </GameButton>
-                </Link>
-              )}
-            </div>
-
-            {/* Bot CTA */}
-            <div className="space-y-2 pt-4">
-              <div className="game-text text-xs text-white/55 uppercase tracking-wider">
-                Practice vs Bot
+            <div className="space-y-8">
+              {/* Main Actions */}
+              <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
+                <GameButton
+                  size="lg"
+                  variant="primary"
+                  onClick={handleQuickPlay}
+                  disabled={isLoading}
+                  className="w-full sm:w-auto min-w-[200px] shadow-[0_0_40px_-10px_rgba(255,0,51,0.5)]"
+                >
+                  {isLoading ? 'Loading...' : isAuthenticated ? 'Play Ranked' : 'Play Guest'}
+                </GameButton>
+                {!isAuthenticated && (
+                  <Link href="/register" className="w-full sm:w-auto">
+                    <GameButton size="lg" variant="outline" className="w-full min-w-[200px]">
+                      Create Account
+                    </GameButton>
+                  </Link>
+                )}
               </div>
-              <div className="flex flex-wrap gap-3 items-center">
-                <div className="flex flex-wrap gap-2">
+
+              {/* Bot Quick Play */}
+              <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                <div className="flex justify-between items-baseline">
+                  <div className="game-text text-xs text-white/40 uppercase tracking-widest font-bold">Training Grounds</div>
+                  <div className="text-xs text-[#00F0FF] font-mono">AI_READY</div>
+                </div>
+                <div className="flex flex-wrap gap-2 items-center">
                   {(['easy', 'medium', 'hard', 'expert'] as BotDifficulty[]).map((level) => (
                     <button
                       key={level}
                       type="button"
                       onClick={() => setBotDifficulty(level)}
-                      className={`px-3 py-1 rounded-full text-xs game-text border transition-colors ${
+                      className={`px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider border transition-all ${
                         botDifficulty === level
-                          ? 'border-white/70 bg-white/15 text-white'
-                          : 'border-white/20 text-white/60 hover:border-white/50 hover:text-white'
+                          ? 'border-white/80 bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]'
+                          : 'border-white/10 text-white/40 hover:border-white/30 hover:text-white'
                       }`}
                     >
                       {level}
                     </button>
                   ))}
+                  <div className="flex-grow"></div>
+                  <GameButton
+                    size="sm"
+                    variant="outline"
+                    onClick={handlePlayBot}
+                    disabled={isBotLoading}
+                    className="w-full sm:w-auto"
+                  >
+                    {isBotLoading ? 'Loading...' : 'Start Match'}
+                  </GameButton>
                 </div>
-                <GameButton
-                  size="sm"
-                  variant="outline"
-                  onClick={handlePlayBot}
-                  disabled={isBotLoading}
-                  className="ml-1"
-                >
-                  {isBotLoading ? 'Starting Bot…' : 'Play vs Bot'}
-                </GameButton>
               </div>
             </div>
 
-            {/* Quick Stats for Authenticated Users */}
+            {/* User Stats */}
             {isAuthenticated && user && (
-              <div className="grid grid-cols-2 gap-4 max-w-md">
-                <div className="game-card p-6">
-                  <div className="game-text text-xs text-white/50 uppercase tracking-wider">Rating</div>
-                  <div className="text-4xl font-extrabold text-[#FF0033]">{user.elo_rating}</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="game-card p-5 border-l-4 border-l-[#FF0033]">
+                  <div className="game-text text-[10px] text-white/40 uppercase tracking-widest">Rank Rating</div>
+                  <div className="text-3xl font-black text-white mt-1">{user.elo_rating}</div>
                 </div>
-                <div className="game-card p-6">
-                  <div className="game-text text-xs text-white/50 uppercase tracking-wider">Games</div>
-                  <div className="text-4xl font-extrabold text-[#FFE500]">{user.games_played}</div>
+                <div className="game-card p-5 border-l-4 border-l-[#FFE500]">
+                  <div className="game-text text-[10px] text-white/40 uppercase tracking-widest">Matches</div>
+                  <div className="text-3xl font-black text-white mt-1">{user.games_played}</div>
                 </div>
               </div>
             )}
-
           </div>
 
-          {/* Right: Visual + explainer cards */}
-          <div className="space-y-4">
-            <div className="game-card p-5 sm:p-6">
-              <div className="game-text text-white/80 uppercase tracking-wider mb-3">How it plays</div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="game-card p-4">
-                  <div className="text-[#FFE500] font-extrabold text-2xl">1</div>
-                  <div className="game-text text-white mt-1">Place stones</div>
-                  <div className="game-text text-xs text-white/50 mt-1">Expand your network legally.</div>
+          {/* Right: Visual */}
+          <div className="hidden lg:block relative">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-[#FF0033]/20 via-[#7a00ff]/10 to-[#00F0FF]/20 blur-[100px] rounded-full pointer-events-none" />
+            <div className="relative z-10 scale-125 origin-center">
+               <ConnectivityState />
+            </div>
+          </div>
+        </div>
+
+        {/* Rules Section */}
+        <div className="mt-24 sm:mt-32 space-y-16">
+          <div className="text-center space-y-4">
+            <h2 className="game-title text-4xl sm:text-5xl text-white">Rules of Engagement</h2>
+            <p className="game-text text-white/50 max-w-2xl mx-auto">
+              Zai is a game of perfect information. There is no luck, only strategy. 
+              Master the three pillars of warfare to claim victory.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Rule 1: Placement */}
+            <div className="game-card group hover:border-[#FFE500]/50 transition-colors duration-500">
+              <div className="p-8 h-full flex flex-col">
+                <div className="mb-6 transform group-hover:scale-105 transition-transform duration-500">
+                  <PlacementState />
                 </div>
-                <div className="game-card p-4">
-                  <div className="text-[#FFE500] font-extrabold text-2xl">2</div>
-                  <div className="game-text text-white mt-1">Create threats</div>
-                  <div className="game-text text-xs text-white/50 mt-1">Cut routes & deny space.</div>
-                </div>
-                <div className="game-card p-4">
-                  <div className="text-[#FFE500] font-extrabold text-2xl">3</div>
-                  <div className="game-text text-white mt-1">Encircle</div>
-                  <div className="game-text text-xs text-white/50 mt-1">Trap to secure the win.</div>
+                <div className="mt-auto space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center justify-center w-8 h-8 rounded bg-[#FFE500]/10 text-[#FFE500] font-bold border border-[#FFE500]/20">1</span>
+                    <h3 className="game-text text-xl text-white">The Foundation</h3>
+                  </div>
+                  <p className="game-text text-sm text-white/60 leading-relaxed">
+                    <strong>Turns 1-12 (Phase 1):</strong> You may only place one stone per turn. Use this time to secure territory and block enemy paths.
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="game-card p-5 sm:p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="game-text text-white/80 uppercase tracking-wider">Board preview</div>
-                <div className="game-text text-white/50 text-xs">Hex grid • legal moves glow</div>
+            {/* Rule 2: Connectivity */}
+            <div className="game-card group hover:border-[#FF0033]/50 transition-colors duration-500">
+              <div className="p-8 h-full flex flex-col">
+                <div className="mb-6 transform group-hover:scale-105 transition-transform duration-500">
+                  <ConnectivityState />
+                </div>
+                <div className="mt-auto space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center justify-center w-8 h-8 rounded bg-[#FF0033]/10 text-[#FF0033] font-bold border border-[#FF0033]/20">2</span>
+                    <h3 className="game-text text-xl text-white">The Golden Rule</h3>
+                  </div>
+                  <p className="game-text text-sm text-white/60 leading-relaxed">
+                    Your stones must <strong>always</strong> form a single connected group. If you make a move that splits your group, you lose immediately.
+                  </p>
+                </div>
               </div>
-              <div className="rounded-xl overflow-hidden border border-white/10 bg-black/20">
-                <svg viewBox="0 0 340 340" className="w-full h-auto">
-                  <rect x="0" y="0" width="340" height="340" fill="rgba(0,0,0,0.25)" />
-                  {(() => {
-                    // Hex grid with radius 3 (37 spaces), center at (0,0)
-                    const radius = 3;
-                    const hexSize = 32;
-                    const centerX = 170;
-                    const centerY = 170;
-                    const hexes: { q: number; r: number }[] = [];
-                    for (let q = -radius; q <= radius; q++) {
-                      const r1 = Math.max(-radius, -q - radius);
-                      const r2 = Math.min(radius, -q + radius);
-                      for (let r = r1; r <= r2; r++) {
-                        hexes.push({ q, r });
-                      }
-                    }
-                    function hexToPixel(q: number, r: number) {
-                      const x = hexSize * (Math.sqrt(3) * q + (Math.sqrt(3) / 2) * r);
-                      const y = hexSize * ((3 / 2) * r);
-                      return { x: centerX + x, y: centerY + y };
-                    }
-                    // Example stones and highlights
-                    const whiteStones = [
-                      { q: 0, r: -2 },
-                      { q: 1, r: -1 },
-                      { q: -1, r: 1 },
-                    ];
-                    const redStones = [
-                      { q: 0, r: 2 },
-                      { q: -2, r: 2 },
-                    ];
-                    const legalMove = { q: 1, r: 0 };
-                    return (
-                      <>
-                        {/* Hex outlines */}
-                        <g opacity="0.4" stroke="rgba(255,255,255,0.30)" strokeWidth="2" fill="none">
-                          {hexes.map(({ q, r }) => {
-                            const { x, y } = hexToPixel(q, r);
-                            const points = Array.from({ length: 6 }, (_, i) => {
-                              const angle = (Math.PI / 3) * i - Math.PI / 2;
-                              return [
-                                x + hexSize * 0.85 * Math.cos(angle),
-                                y + hexSize * 0.85 * Math.sin(angle),
-                              ];
-                            })
-                              .map((p) => p.join(','))
-                              .join(' ');
-                            return <polygon key={`hex-${q},${r}`} points={points} />;
-                          })}
-                        </g>
-                        {/* Holes */}
-                        <g opacity="0.55">
-                          {hexes.map(({ q, r }) => {
-                            const { x, y } = hexToPixel(q, r);
-                            const isVoid = q === 0 && r === 0;
-                            return (
-                              <circle
-                                key={`hole-${q},${r}`}
-                                cx={x}
-                                cy={y}
-                                r={hexSize * 0.45}
-                                fill={isVoid ? '#222' : 'rgba(0,0,0,0.35)'}
-                                stroke={isVoid ? '#7a00ff' : 'rgba(255,255,255,0.18)'}
-                                strokeWidth={isVoid ? 3.5 : 2}
-                              />
-                            );
-                          })}
-                        </g>
-                        {/* Stones */}
-                        {whiteStones.map(({ q, r }, i) => {
-                          const { x, y } = hexToPixel(q, r);
-                          return <circle key={`wstone-${i}`} cx={x} cy={y} r={hexSize * 0.38} fill="#fff" stroke="#ccc" strokeWidth="1.5" />;
-                        })}
-                        {redStones.map(({ q, r }, i) => {
-                          const { x, y } = hexToPixel(q, r);
-                          return <circle key={`rstone-${i}`} cx={x} cy={y} r={hexSize * 0.38} fill="#FF0033" stroke="#AA0022" strokeWidth="1.5" />;
-                        })}
-                        {/* Legal move highlight */}
-                        {(() => {
-                          const { x, y } = hexToPixel(legalMove.q, legalMove.r);
-                          return (
-                            <circle
-                              cx={x}
-                              cy={y}
-                              r={hexSize * 0.45 + 6}
-                              fill="rgba(255,229,0,0.18)"
-                              stroke="#FFE500"
-                              strokeWidth="3"
-                            />
-                          );
-                        })()}
-                      </>
-                    );
-                  })()}
-                </svg>
-              </div>
-              <div className="mt-3 game-text text-white/60 text-sm">
-                Clean rules, tactical depth. Perfect for quick guest play or long-term ranked climbing.
+            </div>
+
+            {/* Rule 3: Sacrifice */}
+            <div className="game-card group hover:border-[#00F0FF]/50 transition-colors duration-500">
+              <div className="p-8 h-full flex flex-col">
+                <div className="mb-6 transform group-hover:scale-105 transition-transform duration-500">
+                  <SacrificeState />
+                </div>
+                <div className="mt-auto space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center justify-center w-8 h-8 rounded bg-[#00F0FF]/10 text-[#00F0FF] font-bold border border-[#00F0FF]/20">3</span>
+                    <h3 className="game-text text-xl text-white">The Surge</h3>
+                  </div>
+                  <p className="game-text text-sm text-white/60 leading-relaxed">
+                    <strong>Turn 13+ (Phase 2):</strong> You gain the ability to <strong>Sacrifice</strong>. Remove 1 stone to place 2 new ones. Use this speed to outflank and encircle.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Lower sections */}
-        <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="game-card p-6">
-            <div className="game-text text-white/80 uppercase tracking-wider mb-2">Instant</div>
-            <div className="game-text text-white text-lg">Guest-first onboarding</div>
-            <div className="game-text text-white/60 text-sm mt-2">
-              Tap “Play as Guest” and you’re queued. Create an account only if you want to.
-            </div>
-          </div>
-          <div className="game-card p-6">
-            <div className="game-text text-white/80 uppercase tracking-wider mb-2">Skill</div>
-            <div className="game-text text-white text-lg">ELO-ranked competition</div>
-            <div className="game-text text-white/60 text-sm mt-2">
-              Rated matchmaking for serious games. Track progress and climb the leaderboard.
-            </div>
-          </div>
-          <div className="game-card p-6">
-            <div className="game-text text-white/80 uppercase tracking-wider mb-2">Live</div>
-            <div className="game-text text-white text-lg">Real-time updates</div>
-            <div className="game-text text-white/60 text-sm mt-2">
-              WebSocket gameplay with responsive move feedback and state updates.
-            </div>
-          </div>
-        </div>
-        <div className="mt-8 flex justify-center">
-          <Link href="/leaderboard">
-            <GameButton variant="outline" size="sm">
-              View Leaderboard
+        {/* Footer CTA */}
+        <div className="mt-24 py-16 text-center border-t border-white/5">
+          <div className="max-w-xl mx-auto space-y-8">
+            <h3 className="game-title text-3xl">Ready to command?</h3>
+            <p className="game-text text-white/50">
+              Join the leaderboard or practice against the neural network AI.
+            </p>
+            <GameButton
+              size="lg"
+              variant="primary"
+              onClick={handleQuickPlay}
+              className="min-w-[200px] shadow-[0_0_50px_-15px_rgba(255,0,51,0.6)]"
+            >
+              Enter The Arena
             </GameButton>
-          </Link>
-    </div>
+          </div>
+        </div>
       </GamePage>
     </GameShell>
   );
