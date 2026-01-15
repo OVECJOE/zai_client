@@ -1,0 +1,43 @@
+{
+  "name": "Zai - Strategic Board Game",
+  "short_name": "Zai",
+  "description": "Play Zai, a strategic hexagonal board game. Challenge players worldwide or practice offline against AI.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0B14",
+  "theme_color": "#FF0033",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Play vs AI",
+      "short_name": "vs AI",
+      "description": "Start a game against the computer",
+      "url": "/?mode=bot",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Find Match",
+      "short_name": "Matchmaking",
+      "description": "Find an online opponent",
+      "url": "/matchmaking",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

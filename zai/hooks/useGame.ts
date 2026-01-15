@@ -4,6 +4,7 @@ import { gameApi } from '@/lib/api/endpoints';
 import { wsManager } from '@/lib/api/websocket';
 import { useUIStore } from '@/store/ui-store';
 import { useAuthStore } from '@/store/auth-store';
+import { audioManager } from '@/lib/audio/audio-manager';
 import type { GameState, MakeMoveRequest, HexCoordinate } from '@/types/api';
 import type { WSMessage, WSGameState, WSMoveAccepted, WSMoveRejected, WSStateUpdate, WSGameEnd } from '@/types/api';
 import { getErrorMessage } from '@/lib/utils/errors';
@@ -106,6 +107,7 @@ export function useGame(gameId?: string) {
               setError(moveRejected.payload.message);
               setIsMakingMove(false);
               setPendingMove(null);
+              audioManager.play('invalid_move');
               addToast({
                 message: moveRejected.payload.message,
                 type: 'error',
@@ -139,6 +141,7 @@ export function useGame(gameId?: string) {
               });
               setPendingMove(null);
               setIsMakingMove(false);
+              audioManager.play('game_end');
               
               const winnerMsg = gameEnd.payload.winner 
                 ? `Game over! ${gameEnd.payload.winner.toUpperCase()} wins by ${gameEnd.payload.win_condition}!`

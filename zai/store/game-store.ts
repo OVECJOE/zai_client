@@ -1,7 +1,9 @@
 // Game state store using Zustand
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { GameState, Move, HexCoordinate } from '@/types/api';
+import { db } from '@/lib/db/indexeddb';
 
 interface GameStore {
   currentGame: GameState | null;
@@ -24,50 +26,101 @@ interface GameStore {
   clearCurrentGame: () => void;
 }
 
-export const useGameStore = create<GameStore>((set) => ({
-  currentGame: null,
-  activeGames: [],
-  selectedPosition: null,
-  pendingMove: null,
-  isMakingMove: false,
-  error: null,
-
-  setCurrentGame: (game) => set({ currentGame: game, error: null }),
-
-  updateGameState: (updates) =>
-    set((state) => ({
-      currentGame: state.currentGame
-        ? { ...state.currentGame, ...updates }
-        : null,
-      error: null,
-    })),
-
-  setActiveGames: (games) => set({ activeGames: games }),
-
-  addActiveGame: (game) =>
-    set((state) => ({
-      activeGames: [...state.activeGames.filter((g) => g.game_id !== game.game_id), game],
-    })),
-
-  removeActiveGame: (gameId) =>
-    set((state) => ({
-      activeGames: state.activeGames.filter((g) => g.game_id !== gameId),
-      currentGame: state.currentGame?.game_id === gameId ? null : state.currentGame,
-    })),
-
-  setSelectedPosition: (position) => set({ selectedPosition: position }),
-
-  setPendingMove: (move) => set({ pendingMove: move }),
-
-  setIsMakingMove: (isMakingMove) => set({ isMakingMove }),
-
-  setError: (error) => set({ error }),
-
-  clearCurrentGame: () =>
-    set({
+export const useGameStore = create<GameStore>()(
+  persist(
+    (set) => ({
       currentGame: null,
+      activeGames: [],
       selectedPosition: null,
       pendingMove: null,
+      isMakingMove: false,
       error: null,
+
+      setCurrentGame: (game) => {
+        set({ currentGame: game, error: null });
+        if (game) {
+          db.put('games', {
+            game_id: game.game_id,
+            white_player: game.white_player,
+            red_player: game.red_player,
+            status: game.status,
+            board_state: game.board_state,
+            legal_moves: game.legal_moves,
+            current_turn: game.current_turn,
+            turn_number: game.turn_number,
+            phase: game.phase,
+            winner: game.winner,
+            win_condition: game.win_condition,
+            created_at: game.created_at,
+            updated_at: Date.now(),
+            is_synced: true,
+          }).catch(console.error);
+        }
+      },
+
+      updateGameState: (updates) =>
+        set((state) => {
+          const updatedGame = state.currentGame
+            ? { ...state.currentGame, ...updates }
+            : null;
+          
+          if (updatedGame) {
+            db.put('games', {
+              game_id: updatedGame.game_id,
+              white_player: updatedGame.white_player,
+              red_player: updatedGame.red_player,
+              status: updatedGame.status,
+              board_state: updatedGame.board_state,
+              legal_moves: updatedGame.legal_moves,
+              current_turn: updatedGame.current_turn,
+              turn_number: updatedGame.turn_number,
+              phase: updatedGame.phase,
+              winner: updatedGame.winner,
+              win_condition: updatedGame.win_condition,
+              created_at: updatedGame.created_at,
+              updated_at: Date.now(),
+              is_synced: true,
+            }).catch(console.error);
+          }
+          
+          return { currentGame: updatedGame, error: null };
+        }),
+
+      setActiveGames: (games) => set({ activeGames: games }),
+
+      addActiveGame: (game) =>
+        set((state) => ({
+          activeGames: [...state.activeGames.filter((g) => g.game_id !== game.game_id), game],
+        })),
+
+      removeActiveGame: (gameId) =>
+        set((state) => ({
+          activeGames: state.activeGames.filter((g) => g.game_id !== gameId),
+          currentGame: state.currentGame?.game_id === gameId ? null : state.currentGame,
+        })),
+
+      setSelectedPosition: (position) => set({ selectedPosition: position }),
+
+      setPendingMove: (move) => set({ pendingMove: move }),
+
+      setIsMakingMove: (isMakingMove) => set({ isMakingMove }),
+
+      setError: (error) => set({ error }),
+
+      clearCurrentGame: () =>
+        set({
+          currentGame: null,
+          selectedPosition: null,
+          pendingMove: null,
+          error: null,
+        }),
     }),
-}));
+    {
+      name: 'game-storage',
+      partialize: (state) => ({
+        currentGame: state.currentGame,
+        activeGames: state.activeGames,
+      }),
+    }
+  )
+);

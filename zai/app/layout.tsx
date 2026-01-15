@@ -3,6 +3,7 @@ import { Orbitron, Rajdhani } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { PWALifecycle } from "@/components/pwa/pwa-lifecycle";
 
 const orbitron = Orbitron({
   variable: "--font-display",
@@ -17,8 +18,30 @@ const rajdhani = Rajdhani({
 });
 
 export const metadata: Metadata = {
-  title: "Zai - Strategic Hexagonal Board Game",
-  description: "Challenge players worldwide in Zai, a strategic hexagonal board game",
+  title: "Zai - Strategic Board Game",
+  description: "Play Zai, a strategic hexagonal board game. Challenge players worldwide or practice offline against AI.",
+  manifest: "/manifest.json",
+  themeColor: "#FF0033",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Zai Game",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -31,6 +54,7 @@ export default function RootLayout({
       <body
         className={`${orbitron.variable} ${rajdhani.variable} antialiased`}
       >
+        <PWALifecycle />
         <Header />
         {children}
         <Footer />
