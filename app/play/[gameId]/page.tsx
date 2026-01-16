@@ -148,7 +148,6 @@ function GameContent() {
   } else if (game.status === 'active') {
     gameView = <ActiveGameView game={game} legalMoves={game.legal_moves ?? []} onMove={selectPosition} />;
   } else if (game.status === 'completed' || game.status === 'abandoned') {
-    // The CompletedGameView now handles fetching the replay data internally.
     gameView = <CompletedGameView game={game} />;
   }
 

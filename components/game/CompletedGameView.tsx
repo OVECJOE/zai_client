@@ -63,7 +63,7 @@ export function CompletedGameView({ game }: { game: GameState }) {
   const winColor = game.winner === 'white' ? 'text-white' : 'text-[#FF0033]';
 
   return (
-    <div className="flex flex-col items-center w-full max-w-5xl mx-auto gap-6">
+    <div className="flex flex-col items-center w-full max-w-7xl mx-auto gap-6">
 
       {/* Victory Banner */}
       <div className="w-full text-center space-y-4 py-8 relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 backdrop-blur-sm group">
