@@ -237,6 +237,7 @@ export interface WSMessage {
 
 export interface WSGameState extends WSMessage {
   type: 'game_state';
+  status: 'active' | 'pending' | 'completed'
   state: {
     current_turn: 'white' | 'red';
     turn_number: number;

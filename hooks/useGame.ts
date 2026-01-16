@@ -60,7 +60,7 @@ export function useGame(gameId?: string) {
                 phase: wsGameState.state.phase as GameState['phase'],
                 white_player: wsGameState.players.white,
                 red_player: wsGameState.players.red,
-                status: 'active' as const,
+                status: wsGameState.status
               };
               if (!gameState) {
                 Object.assign(newState, {
