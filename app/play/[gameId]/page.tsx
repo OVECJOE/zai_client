@@ -7,7 +7,6 @@ import { useGame } from '@/hooks/useGame';
 import { PendingGameView } from '@/components/game/PendingGameView';
 import { ActiveGameView } from '@/components/game/ActiveGameView';
 import { CompletedGameView } from '@/components/game/CompletedGameView';
-import type { GameState, Move, HexCoordinate } from '@/types/api';
 import { GameButton } from '@/components/ui/game-button';
 import { GameShell, GamePage } from '@/components/layout/GameShell';
 import { useGameStore } from '@/store/game-store';
@@ -143,61 +142,14 @@ function GameContent() {
 
   const isGameOver = game.status === 'completed' || game.status === 'abandoned';
 
-
-  // --- Replay/Analysis Mode Logic ---
-  function reconstructBoardAndLegalMoves(game: GameState) {
-    // Start from initial state
-    const initial: GameState = {
-      ...game,
-      board_state: { stones: [] },
-      move_history: [],
-      legal_moves: [],
-      turn_number: 1,
-      current_turn: 'white',
-      phase: 'placement',
-      status: 'active',
-      winner: undefined,
-      win_condition: undefined,
-    };
-    const boards: GameState[] = [initial];
-    const legalMoves: HexCoordinate[][] = [[]];
-    let current = JSON.parse(JSON.stringify(initial));
-    const moves = game.move_history || [];
-    for (let i = 0; i < moves.length; ++i) {
-      const move = moves[i];
-      // Apply move to current board
-      if (move.move_type === 'placement' && move.position) {
-        current.board_state.stones.push({ player: move.player, position: move.position });
-      } else if (move.move_type === 'sacrifice' && move.sacrifice_position && move.placements) {
-        // Remove sacrificed stone
-        current.board_state.stones = current.board_state.stones.filter(
-          (s: any) => !(s.position.q === move.sacrifice_position.q && s.position.r === move.sacrifice_position.r)
-        );
-        // Add new stones
-        move.placements.forEach((p) => {
-          current.board_state.stones.push({ player: move.player, position: p });
-        });
-      }
-      // Advance turn, phase, etc. (simplified)
-      current.turn_number++;
-      current.current_turn = current.current_turn === 'white' ? 'red' : 'white';
-      // TODO: phase logic if needed
-      // Save snapshot
-      boards.push(JSON.parse(JSON.stringify(current)));
-      // For now, legal moves per move is empty (backend needed for true legal moves)
-      legalMoves.push([]);
-    }
-    return { boards, legalMoves };
-  }
-
   let gameView = null;
   if (game.status === 'pending') {
     gameView = <PendingGameView game={game} onMove={selectPosition} />;
   } else if (game.status === 'active') {
     gameView = <ActiveGameView game={game} legalMoves={game.legal_moves ?? []} onMove={selectPosition} />;
   } else if (game.status === 'completed' || game.status === 'abandoned') {
-    const { boards, legalMoves } = reconstructBoardAndLegalMoves(game);
-    gameView = <CompletedGameView game={game} moves={game.move_history ?? []} legalMovesPerMove={legalMoves} boardSnapshots={boards} />;
+    // The CompletedGameView now handles fetching the replay data internally.
+    gameView = <CompletedGameView game={game} />;
   }
 
   return (

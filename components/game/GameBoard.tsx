@@ -3,12 +3,12 @@
 import React from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { useGameStore } from '@/store/game-store';
-import type { GameState, HexCoordinate } from '@/types/api';
+import type { GameState, HexCoordinate, Move } from '@/types/api';
 
 interface GameBoardProps {
   game: GameState;
   onMove: (position: HexCoordinate) => void;
-  legalMoves?: HexCoordinate[];
+  legalMoves?: Move[];
 }
 
 function hexToPixel(q: number, r: number, size: number = 30) {
