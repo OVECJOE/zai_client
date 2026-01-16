@@ -152,18 +152,17 @@ export default function LeaderboardPage() {
             </div>
           </div>
 
-          {/* List - infinite scroll, responsive */}
           <div className="divide-y divide-white/10">
             {entries.map((entry, index) => (
               <div
                 key={entry.user_id}
-                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 px-2 sm:px-4 py-3 hover:bg-white/5 transition-colors"
+                className="flex items-center justify-between gap-4 px-2 sm:px-4 py-3 hover:bg-white/5 transition-colors"
               >
-                <div className="flex min-w-0 items-center gap-2 sm:gap-4 w-full">
+                <div className="flex min-w-0 items-center gap-4">
                   <div className="w-10 text-right game-text text-white/50">
                     #{entry.rank}
                   </div>
-                  <div className="min-w-0 w-full">
+                  <div className="min-w-0">
                     <div className="game-text text-white truncate flex items-center gap-2">
                       {index === 0 && (
                         <span className="inline-block h-5 w-5 rounded-full bg-[#FFEB3B] shadow-md" />
