@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { leaderboardApi } from '@/lib/api/endpoints';
 import type { LeaderboardEntry } from '@/types/api';
 import { GameShell, GamePage } from '@/components/layout/GameShell';
@@ -13,61 +13,55 @@ export default function LeaderboardPage() {
   const [minGames, setMinGames] = useState(0);
   const [sortBy, setSortBy] = useState<'elo' | 'games' | 'win'>('elo');
   const [direction, setDirection] = useState<'desc' | 'asc'>('desc');
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
+  // Load leaderboard with filters and pagination
+  const loadLeaderboard = async (reset = false) => {
+    setIsLoading(true);
+    try {
+      const params: any = {
+        limit: 50,
+        offset: reset ? 0 : offset,
+        search: search.trim() || undefined,
+        min_games: minGames > 0 ? minGames : undefined,
+        sort_by: sortBy,
+        direction,
+      };
+      const response = await leaderboardApi.getLeaderboard(params);
+      setTotal(response.total);
+      setHasMore(response.entries.length + (reset ? 0 : entries.length) < response.total);
+      setEntries(reset ? response.entries : [...entries, ...response.entries]);
+      setOffset(reset ? response.entries.length : offset + response.entries.length);
+    } catch (error) {
+      console.error('Failed to load leaderboard:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initial load and filter/sort changes
   useEffect(() => {
-    const loadLeaderboard = async () => {
-      try {
-        const response = await leaderboardApi.getLeaderboard({ limit: 100 });
-        setEntries(response.entries);
-        setTotal(response.total);
-      } catch (error) {
-        console.error('Failed to load leaderboard:', error);
-      } finally {
-        setIsLoading(false);
+    loadLeaderboard(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, minGames, sortBy, direction]);
+
+  // Infinite scroll
+  useEffect(() => {
+    if (!hasMore || isLoading) return;
+    const handleScroll = () => {
+      if (
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 300 &&
+        hasMore && !isLoading
+      ) {
+        loadLeaderboard();
       }
     };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasMore, isLoading, offset, search, minGames, sortBy, direction]);
 
-    loadLeaderboard();
-  }, []);
-
-  const filteredEntries = useMemo(() => {
-    let list = [...entries];
-
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((e) => e.username.toLowerCase().includes(q));
-    }
-
-    if (minGames > 0) {
-      list = list.filter((e) => e.games_played >= minGames);
-    }
-
-    list.sort((a, b) => {
-      let av: number;
-      let bv: number;
-      switch (sortBy) {
-        case 'games':
-          av = a.games_played;
-          bv = b.games_played;
-          break;
-        case 'win':
-          av = a.win_rate;
-          bv = b.win_rate;
-          break;
-        case 'elo':
-        default:
-          av = a.elo_rating;
-          bv = b.elo_rating;
-      }
-      if (av === bv) return 0;
-      const cmp = av < bv ? -1 : 1;
-      return direction === 'desc' ? -cmp : cmp;
-    });
-
-    return list;
-  }, [entries, search, minGames, sortBy, direction]);
-
-  if (isLoading) {
+  if (isLoading && entries.length === 0) {
     return (
       <GameShell>
         <GamePage title="Leaderboard" subtitle="Top players across all queues.">
@@ -83,11 +77,11 @@ export default function LeaderboardPage() {
         title="Leaderboard"
         subtitle="Top players across all queues."
         actions={
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
             <div className="game-text text-white/60 text-xs sm:text-sm">
-              {filteredEntries.length} / {total} players
+              {entries.length} / {total} players
             </div>
-            <div className="flex flex-wrap gap-2 justify-end">
+            <div className="flex flex-wrap gap-2 justify-end w-full">
               <button
                 type="button"
                 className={`px-3 py-1 rounded-full text-xs game-text ${
@@ -130,9 +124,9 @@ export default function LeaderboardPage() {
         }
       >
         <div className="game-card p-4 sm:p-5 space-y-4">
-          {/* Filters row */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex-1 max-w-xs space-y-1">
+          {/* Filters row - fully responsive */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between w-full">
+            <div className="flex-1 max-w-xs space-y-1 w-full">
               <label className="game-text text-xs text-white/60 uppercase tracking-wider">
                 Search player
               </label>
@@ -144,7 +138,7 @@ export default function LeaderboardPage() {
                 placeholder="Username…"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <label className="game-text text-xs text-white/60 uppercase tracking-wider">
                 Min games
               </label>
@@ -158,18 +152,18 @@ export default function LeaderboardPage() {
             </div>
           </div>
 
-          {/* List */}
+          {/* List - infinite scroll, responsive */}
           <div className="divide-y divide-white/10">
-            {filteredEntries.map((entry, index) => (
+            {entries.map((entry, index) => (
               <div
                 key={entry.user_id}
-                className="flex items-center justify-between gap-4 px-2 sm:px-4 py-3 hover:bg-white/5 transition-colors"
+                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 px-2 sm:px-4 py-3 hover:bg-white/5 transition-colors"
               >
-                <div className="flex min-w-0 items-center gap-4">
+                <div className="flex min-w-0 items-center gap-2 sm:gap-4 w-full">
                   <div className="w-10 text-right game-text text-white/50">
                     #{entry.rank}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 w-full">
                     <div className="game-text text-white truncate flex items-center gap-2">
                       {index === 0 && (
                         <span className="inline-block h-5 w-5 rounded-full bg-[#FFEB3B] shadow-md" />
@@ -193,6 +187,12 @@ export default function LeaderboardPage() {
                 </div>
               </div>
             ))}
+            {isLoading && (
+              <div className="text-center py-4 text-white/60">Loading…</div>
+            )}
+            {!hasMore && entries.length > 0 && (
+              <div className="text-center py-4 text-white/40">End of leaderboard</div>
+            )}
           </div>
         </div>
       </GamePage>
