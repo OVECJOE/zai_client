@@ -161,7 +161,7 @@ function GameContent() {
             Resign
           </GameButton>
         ) : (
-          <GameButton variant="outline" size="sm" onClick={() => router.push('/') }>
+          <GameButton variant="outline" size="sm" onClick={() => router.push('/#training-grounds')}>
             New Game
           </GameButton>
         )

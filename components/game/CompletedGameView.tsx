@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { GameBoard } from './GameBoard'
 import { gameApi } from '@/lib/api/endpoints'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,19 @@ export function CompletedGameView({ game }: { game: GameState }) {
   const [replayData, setReplayData] = useState<GameReplayResponse | null>(null);
   const [step, setStep] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [winnerName, winColor] = useMemo(() => {
+    const lastMove = game.move_history[game.move_history.length - 1];
+    const player = game?.winner || lastMove?.player;
+
+    if (player === 'white') {
+      return [game.white_player.username, 'text-white'];
+    } else if (player === 'red') {
+      return [game.red_player.username, 'text-[#FF0033]'];
+    } else {
+      return ['No one', 'text-white/70'];
+    }
+  }, [game]);
 
   useEffect(() => {
     let mounted = true;
@@ -59,9 +72,6 @@ export function CompletedGameView({ game }: { game: GameState }) {
     status: 'completed'
   };
 
-  const winnerName = game.winner === 'white' ? game.white_player.username : (game.winner === 'red' ? game.red_player.username : null);
-  const winColor = game.winner === 'white' ? 'text-white' : 'text-[#FF0033]';
-
   return (
     <div className="flex flex-col items-center w-full max-w-7xl mx-auto gap-6">
 
@@ -76,7 +86,7 @@ export function CompletedGameView({ game }: { game: GameState }) {
 
         <div className="flex flex-col items-center gap-2">
           <h1 className={cn("text-4xl md:text-6xl font-black italic uppercase tracking-tighter drop-shadow-2xl scale-100 group-hover:scale-105 transition-transform duration-500", winColor)}>
-            {game.winner === 'draw' ? 'Draw' : `${winnerName} Wins`}
+            {game.winner === 'draw' ? 'Draw' : `${winnerName || 'Unknown'} Wins`}
           </h1>
           <div className="px-3 py-1 bg-white/10 rounded text-xs font-mono uppercase tracking-widest text-white/80">
             {game.win_condition?.replace('_', ' ') || 'Resignation'}

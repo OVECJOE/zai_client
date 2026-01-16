@@ -130,7 +130,7 @@ export default function Home() {
               </div>
 
               {/* Bot Quick Play */}
-              <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+              <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-3" id="training-grounds">
                 <div className="flex justify-between items-baseline">
                   <div className="game-text text-xs text-white/40 uppercase tracking-widest font-bold">Training Grounds</div>
                   <div className="text-xs text-[#00F0FF] font-mono">AI_READY</div>
