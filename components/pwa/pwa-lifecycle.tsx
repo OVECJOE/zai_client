@@ -8,7 +8,6 @@ import { audioManager } from '@/lib/audio/audio-manager';
 
 export function PWALifecycle() {
   useEffect(() => {
-    // Register service worker
     registerServiceWorker();
 
     // Initialize IndexedDB
@@ -16,7 +15,6 @@ export function PWALifecycle() {
       console.error('Failed to initialize IndexedDB:', error);
     });
 
-    // Request persistent storage
     requestPersistentStorage().then((granted) => {
       if (granted) {
         console.log('Persistent storage granted');

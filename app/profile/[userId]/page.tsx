@@ -110,7 +110,11 @@ export default function ProfilePage() {
                 <div className="px-4 py-10 text-center game-text text-white/60">No games yet</div>
               ) : (
                 gameHistory.map((game) => (
-                  <div key={game.game_id} className="px-4 py-3 flex items-center justify-between gap-4">
+                  <a
+                    key={game.game_id}
+                    href={`/play/${game.game_id}`}
+                    className="block px-4 py-3 flex items-center justify-between gap-4 hover:bg-white/5 transition-colors cursor-pointer"
+                  >
                     <div className="min-w-0">
                       <div className="game-text text-white truncate">vs {game.opponent.username}</div>
                       <div className="game-text text-xs text-white/50">
@@ -130,7 +134,7 @@ export default function ProfilePage() {
                         {game.completed_at ? new Date(game.completed_at * 1000).toLocaleDateString() : 'Ongoing'}
                       </div>
                     </div>
-                  </div>
+                  </a>
                 ))
               )}
             </div>
