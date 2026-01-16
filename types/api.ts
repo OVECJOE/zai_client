@@ -328,3 +328,26 @@ export interface CreateBotGameResponse {
   current_turn: 'white' | 'red';
   started_at: number;
 }
+
+export interface ReplaySnapshot {
+  turn_number: number;
+  board_state: {
+    stones: Array<{
+      player: 'white' | 'red';
+      position: HexCoordinate;
+    }>;
+  };
+  legal_moves: Move[];
+  current_turn: 'white' | 'red';
+  last_move?: {
+    player: 'white' | 'red';
+    move: Move;
+    move_number: number;
+  };
+}
+
+export interface GameReplayResponse {
+  game_id: string;
+  snapshots: ReplaySnapshot[];
+  total_moves: number;
+}

@@ -8,6 +8,7 @@ import type { GameState, HexCoordinate } from '@/types/api';
 interface GameBoardProps {
   game: GameState;
   onMove: (position: HexCoordinate) => void;
+  legalMoves?: HexCoordinate[];
 }
 
 function hexToPixel(q: number, r: number, size: number = 30) {

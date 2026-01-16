@@ -18,6 +18,7 @@ import type {
   CreateInvitationRequest,
   LeaderboardResponse,
   GameHistoryResponse,
+  GameReplayResponse,
 } from '@/types/api';
 
 // Authentication endpoints
@@ -166,6 +167,10 @@ export const gameApi = {
 
   createBotGame: async (data: CreateBotGameRequest): Promise<CreateBotGameResponse> => {
     return apiClient.post<CreateBotGameResponse>('/games/bot', data);
+  },
+
+  getReplay: async (gameId: string): Promise<GameReplayResponse> => {
+    return apiClient.get<GameReplayResponse>(`/games/${gameId}/replay`);
   },
 };
 
