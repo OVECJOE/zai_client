@@ -124,7 +124,9 @@ export function useMatchmaking() {
       
       if (status?.in_queue) {
         reconnectTimeoutRef.current = setTimeout(() => {
-          setStatus((prev) => prev);
+          // FIX: Call loadStatus to actually refresh state and trigger reconnect
+          // Previous setStatus((prev) => prev) was ignored by React due to identical reference
+          loadStatus();
         }, 3000);
       }
     };
@@ -136,7 +138,7 @@ export function useMatchmaking() {
         reconnectTimeoutRef.current = null;
       }
     };
-  }, [status?.in_queue, accessToken, addToast]);
+  }, [status?.in_queue, accessToken, addToast, loadStatus]);
 
   // Load initial status
   useEffect(() => {
