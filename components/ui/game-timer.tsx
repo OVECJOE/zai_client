@@ -7,37 +7,69 @@ import { useEffect, useState, useRef } from 'react';
 export interface GameTimerProps {
   player: 'white' | 'red';
   current?: 'white' | 'red';
-  timeRemaining: number;
+  timeRemaining: number | null;
+  countdown?: boolean;
 }
 
-export default function GameTimer({ player, timeRemaining, current }: GameTimerProps) {
+export default function GameTimer({ 
+  player, 
+  timeRemaining, 
+  current, 
+  countdown = true 
+}: GameTimerProps) {
   const playerColor = player === 'white' ? 'white/80' : '[#FF0033]/90';
   const isActive = current === player;
   
-  const [displayTime, setDisplayTime] = useState(timeRemaining);
-  const endTimeRef = useRef<number>(Date.now() + timeRemaining * 1000);
+  const [displayTime, setDisplayTime] = useState(timeRemaining ?? 0);
+  
+  const anchorTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
-    setDisplayTime(timeRemaining);
-    endTimeRef.current = Date.now() + timeRemaining * 1000;
-  }, [timeRemaining, isActive]);
+    const safeTime = timeRemaining ?? 0;
+    const now = Date.now();
+
+    if (countdown) {
+      anchorTimeRef.current = now + safeTime * 1000;
+    } else {
+      anchorTimeRef.current = now - safeTime * 1000;
+    }
+
+    if (!isActive) {
+      setDisplayTime(safeTime);
+    }
+  }, [timeRemaining, isActive, countdown]);
 
   useEffect(() => {
     if (!isActive) return;
 
-    const interval = setInterval(() => {
+    const tick = () => {
       const now = Date.now();
-      const secondsLeft = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
-      
-      setDisplayTime(prev => prev !== secondsLeft ? secondsLeft : prev);
-      
-      if (secondsLeft <= 0) {
+      let newValue = 0;
+
+      if (countdown) {
+        newValue = Math.max(0, Math.ceil((anchorTimeRef.current - now) / 1000));
+      } else {
+        newValue = Math.floor((now - anchorTimeRef.current) / 1000);
+      }
+
+      setDisplayTime(prev => (prev !== newValue ? newValue : prev));
+
+      if (countdown && newValue <= 0) {
+        return false;
+      }
+      return true;
+    };
+
+    if (!tick()) return;
+
+    const interval = setInterval(() => {
+      if (!tick()) {
         clearInterval(interval);
       }
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isActive]);
+  }, [isActive, countdown]);
 
   return (
     <div className={cn(

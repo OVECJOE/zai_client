@@ -39,6 +39,7 @@ export function ActiveGameView({ game, legalMoves, onMove }: {
             player="white"
             current={game.current_turn}
             timeRemaining={game.white_player.time_remaining ?? 0}
+            countdown={!!game.white_player.time_remaining}
           />
         </div>
       </div>
@@ -99,6 +100,7 @@ export function ActiveGameView({ game, legalMoves, onMove }: {
             player="red"
             current={game.current_turn}
             timeRemaining={game.red_player.time_remaining ?? 0}
+            countdown={!!game.red_player.time_remaining}
           />
         </div>
         
