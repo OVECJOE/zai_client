@@ -1,7 +1,8 @@
 import { GameBoard } from './GameBoard';
-import { cn } from '@/lib/utils';
+import { cn, formatTime } from '@/lib/utils';
 import type { GameState, HexCoordinate, Move } from '@/types/api';
 import { Clock, Shield, Zap } from 'lucide-react';
+import GameTimer from '../ui/game-timer';
 
 export function ActiveGameView({ game, legalMoves, onMove }: {
   game: GameState,
@@ -34,14 +35,11 @@ export function ActiveGameView({ game, legalMoves, onMove }: {
           </div>
           <div className="text-white/50 font-mono text-sm mb-2">{game.white_player.elo_rating} ELO</div>
           
-          <div className="flex items-center gap-2 text-white/80 font-mono text-sm lg:text-base p-2 bg-black/20 rounded">
-             <Clock className="w-4 h-4" />
-             <span>
-               {game.white_player.time_remaining 
-                 ? `${Math.floor(game.white_player.time_remaining / 60)}:${(game.white_player.time_remaining % 60).toString().padStart(2, '0')}`
-                 : '--:--'}
-             </span>
-          </div>
+          <GameTimer
+            player="white"
+            current={game.current_turn}
+            timeRemaining={game.white_player.time_remaining ?? 0}
+          />
         </div>
       </div>
 
@@ -97,14 +95,11 @@ export function ActiveGameView({ game, legalMoves, onMove }: {
           </div>
           <div className="text-white/50 font-mono text-sm mb-2">{game.red_player.elo_rating} ELO</div>
           
-          <div className="flex items-center justify-end gap-2 text-[#FF0033]/90 font-mono text-sm lg:text-base p-2 bg-black/20 rounded">
-             <Clock className="w-4 h-4" />
-             <span>
-               {game.red_player.time_remaining 
-                 ? `${Math.floor(game.red_player.time_remaining / 60)}:${(game.red_player.time_remaining % 60).toString().padStart(2, '0')}`
-                 : '--:--'}
-             </span>
-          </div>
+          <GameTimer
+            player="red"
+            current={game.current_turn}
+            timeRemaining={game.red_player.time_remaining ?? 0}
+          />
         </div>
         
         <div className="relative order-1 lg:order-2">
