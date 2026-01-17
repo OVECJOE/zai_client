@@ -27,7 +27,7 @@ function GameContent() {
   const router = useRouter();
   const gameId = params.gameId as string;
   const { game, loadGame, connectToGame, resign, selectPosition } = useGame(gameId);
-  const { error, updateGameState } = useGameStore();
+  const { error } = useGameStore();
   const [isLoading, setIsLoading] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
   const [localTime, setLocalTime] = useState<{white: number | null, red: number | null}>({white: null, red: null});
@@ -84,14 +84,8 @@ function GameContent() {
         
         if (game.current_turn === 'white' && prev.white !== null && prev.white > 0) {
           newTime.white = Math.max(0, prev.white - 1);
-          if (newTime.white === 0) {
-            updateGameState({ status: 'completed', winner: 'red', win_condition: 'timeout' });
-          }
         } else if (game.current_turn === 'red' && prev.red !== null && prev.red > 0) {
           newTime.red = Math.max(0, prev.red - 1);
-          if (newTime.red === 0) {
-            updateGameState({ status: 'completed', winner: 'white', win_condition: 'timeout' });
-          }
         }
         
         return newTime;

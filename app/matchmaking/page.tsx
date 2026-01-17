@@ -3,8 +3,9 @@
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useMatchmaking } from '@/hooks/useMatchmaking';
 import { GameButton } from '@/components/ui/game-button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { GamePage, GameShell } from '@/components/layout/GameShell';
+import { useRouter } from 'next/navigation';
 
 export default function MatchmakingPage() {
   return (
@@ -17,10 +18,17 @@ export default function MatchmakingPage() {
 }
 
 function MatchmakingContent() {
-  const { status, statistics, isLoading, joinQueue, leaveQueue } = useMatchmaking();
+  const router = useRouter();
+  const [isInitializing, setIsInitializing] = useState(true);
+  const { status, statistics, isLoading, joinQueue, leaveQueue, loadStatus } = useMatchmaking();
   const [preferredColor, setPreferredColor] = useState<'white' | 'red' | 'random'>('random');
   const [timeControl, setTimeControl] = useState<'blitz' | 'rapid' | 'classical' | undefined>(undefined);
   const [isRated, setIsRated] = useState(true);
+
+  // Initial load check
+  useEffect(() => {
+    loadStatus().finally(() => setIsInitializing(false));
+  }, [loadStatus]);
 
   const handleJoin = async () => {
     await joinQueue({
@@ -32,6 +40,16 @@ function MatchmakingContent() {
 
   // Calculate if queue is empty
   const isQueueEmpty = statistics && statistics.queue_length === 0;
+
+  if (isInitializing) {
+    return (
+      <GamePage title="Matchmaking" subtitle="Connecting...">
+         <div className="game-card p-12 text-center">
+            <div className="animate-pulse text-white/60">Checking queue status...</div>
+         </div>
+      </GamePage>
+    );
+  }
 
   return (
     <GamePage
@@ -55,11 +73,30 @@ function MatchmakingContent() {
                   <div className="game-text text-white/60 uppercase tracking-wider">Estimated wait</div>
                 </div>
               )}
-              <div className="text-sm text-white/60 max-w-md mx-auto">
-                {isQueueEmpty 
-                  ? "You're the only player in queue. Share the game with friends or try playing against the AI!"
-                  : "We'll notify you when a match is found. You can leave this page."}
+              
+              {/* FIX: Warning text updated to reflect reality */}
+              <div className="text-sm text-yellow-400/80 max-w-md mx-auto bg-yellow-400/10 p-3 rounded border border-yellow-400/20">
+                ⚠️ Please stay on this page. Leaving will remove you from the queue.
               </div>
+
+              {/* FIX: Add "Play vs Bot" option if queue is empty */}
+              {isQueueEmpty && (
+                <div className="pt-4 border-t border-white/10">
+                    <p className="text-white/60 mb-4 text-sm">Tired of waiting?</p>
+                    <GameButton 
+                        onClick={() => {
+                            leaveQueue();
+                            router.push('/#training-grounds'); // Assuming this anchor exists on home
+                        }} 
+                        variant="outline" 
+                        size="md" 
+                        className="w-full"
+                    >
+                        Play vs AI Bot
+                    </GameButton>
+                </div>
+              )}
+
               <GameButton onClick={leaveQueue} variant="danger" size="lg" className="w-full">
                 Leave Queue
               </GameButton>
@@ -169,13 +206,6 @@ function MatchmakingContent() {
                     <span>Avg. wait time:</span>
                     <span className="font-bold text-white">{statistics.average_wait_time.toFixed(0)}s</span>
                   </div>
-                  {isQueueEmpty && (
-                    <div className="mt-4 pt-4 border-t border-white/10">
-                      <p className="text-xs text-white/50">
-                        💡 Tip: While waiting for players, try playing against our AI to practice your strategy!
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             )}

@@ -7,10 +7,12 @@ import { useAuthStore } from '@/store/auth-store';
 import { WS_BASE_URL } from '@/config/constants';
 import type { MatchmakingRequest, MatchmakingStatus, QueueStatistics } from '@/types/api';
 import { getErrorMessage } from '@/lib/utils/errors';
+import { useRouter } from 'next/navigation';
 
 export function useMatchmaking() {
   const { addToast } = useUIStore();
   const { accessToken } = useAuthStore();
+  const router = useRouter();
   const [status, setStatus] = useState<MatchmakingStatus | null>(null);
   const [statistics, setStatistics] = useState<QueueStatistics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -113,7 +115,7 @@ export function useMatchmaking() {
           message: 'Match found! Redirecting to game...',
           type: 'success',
         });
-        window.location.href = `/play/${data.game_id}`;
+        router.push(`/play/${data.game_id}`);
       } else if (data.type === 'queue_update' || data.type === 'status') {
         setStatus(data.status);
       }
@@ -124,8 +126,6 @@ export function useMatchmaking() {
       
       if (status?.in_queue) {
         reconnectTimeoutRef.current = setTimeout(() => {
-          // FIX: Call loadStatus to actually refresh state and trigger reconnect
-          // Previous setStatus((prev) => prev) was ignored by React due to identical reference
           loadStatus();
         }, 3000);
       }
